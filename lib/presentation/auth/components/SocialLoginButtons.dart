@@ -20,7 +20,7 @@ class SocialLoginButtons extends StatelessWidget {
           children: [
             IconButton(
               icon: SvgPicture.asset('lib/images/devicon_google.svg'),
-              iconSize: 40,
+              iconSize: 20,
               onPressed: () {
                 // Handle Google login
               },
@@ -28,7 +28,7 @@ class SocialLoginButtons extends StatelessWidget {
             const SizedBox(width: 20),
             IconButton(
               icon: SvgPicture.asset('lib/images/logos_facebook.svg'),
-              iconSize: 40,
+              iconSize: 20,
               onPressed: () {
                 // Handle Facebook login
               },
@@ -36,7 +36,7 @@ class SocialLoginButtons extends StatelessWidget {
             const SizedBox(width: 20),
             IconButton(
               icon: SvgPicture.asset('lib/images/logos_twitter.svg'),
-              iconSize: 40,
+              iconSize: 20,
               onPressed: () {
                 // Handle Twitter login
               },
