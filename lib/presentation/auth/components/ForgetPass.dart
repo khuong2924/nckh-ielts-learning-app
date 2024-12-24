@@ -1,3 +1,4 @@
+import 'package:auth/presentation/auth/pages/reset-password.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 
@@ -15,9 +16,9 @@ class Forget extends State<ForgetPass> {
       color: Colors.white,
       child: RichText(
         textAlign: TextAlign.right,
-        text: const TextSpan(
+        text: TextSpan(
           children: [
-            TextSpan(
+            const TextSpan(
               text: 'Forget your password? ',
               style: TextStyle(
                 decoration: TextDecoration.none,
@@ -29,20 +30,20 @@ class Forget extends State<ForgetPass> {
             ),
             TextSpan(
               text: 'Reset now.',
-              style: TextStyle(
+              style: const TextStyle(
                 decoration: TextDecoration.none,
                 fontSize: 13,
                 color: Colors.blue, // Change the color here
                 fontFamily: 'Montserrat-SemiBold',
                 fontWeight: FontWeight.normal,
               ),
-              // recognizer: TapGestureRecognizer()
-              //   ..onTap = () {
-              //     Navigator.push(
-              //       context,
-              //       // MaterialPageRoute(builder: (context) => ResetPasswordPage()), // Navigate to the reset password page
-              //     );
-              //   },
+              recognizer: TapGestureRecognizer()
+                ..onTap = () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) =>ResetPassword()),
+                  );
+                },
             ),
           ],
         ),
