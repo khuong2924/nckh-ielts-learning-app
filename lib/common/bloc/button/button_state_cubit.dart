@@ -1,34 +1,43 @@
-import 'package:auth/common/bloc/button/button_state.dart';
-import 'package:dartz/dartz.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../../../core/usecase/usecase.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'button_state.dart';
 
 class ButtonStateCubit extends Cubit<ButtonState> {
   ButtonStateCubit() : super(ButtonInitialState());
 
-  void excute({dynamic params, required UseCase usecase}) async {
+  // Firebase instance
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
 
-    emit(ButtonLoadingState());
-    await Future.delayed(const Duration(seconds: 2));
+  // Method to log in using Firebase Authentication
+  void login(String email, String password) async {
+    emit(ButtonLoadingState()); // Emit loading state
+
     try {
-     Either result = await usecase.call(param: params);
-
-     result.fold(
-      (error) {
-        emit(
-          ButtonFailureState(errorMessage: error)
-        );
-      },
-      (data) {
-        emit(ButtonSuccessState());
-      }
-
-     );
-    } catch(e){
-      emit(
-        ButtonFailureState(errorMessage: e.toString())
+      await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
       );
+      emit(ButtonSuccessState()); // Login successful
+    } on FirebaseAuthException catch (e) {
+      // Handle specific Firebase exceptions
+      String errorMessage = _handleFirebaseAuthError(e.code);
+      emit(ButtonFailureState(errorMessage: errorMessage));
+    } catch (e) {
+      emit(ButtonFailureState(errorMessage: "An unexpected error occurred."));
+    }
+  }
+
+  // Handle Firebase error codes
+  String _handleFirebaseAuthError(String errorCode) {
+    switch (errorCode) {
+      case 'user-not-found':
+        return "No user found for this email.";
+      case 'wrong-password':
+        return "Incorrect password.";
+      case 'invalid-email':
+        return "Invalid email format.";
+      default:
+        return "An error occurred. Please try again.";
     }
   }
 }
