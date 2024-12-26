@@ -7,6 +7,8 @@ import 'package:auth/presentation/home/pages/home.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:auth/presentation/auth/pages/home-page.dart';
 
 class SignupPage extends StatelessWidget {
   SignupPage({super.key});
@@ -24,8 +26,8 @@ class SignupPage extends StatelessWidget {
           listener: (context, state) {
             if (state is ButtonSuccessState) {
               Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const HomePage(),)
+                  context,
+                  MaterialPageRoute(builder: (context) => const HomeLoad(),)
               );
             }
             if (state is ButtonFailureState){
@@ -51,7 +53,7 @@ class SignupPage extends StatelessWidget {
                   const SizedBox(height: 60,),
                   _createAccountButton(context),
                   const SizedBox(height: 20,),
-                   _signinText(context)
+                  _signinText(context)
                 ],
               ),
             ),
@@ -64,9 +66,9 @@ class SignupPage extends StatelessWidget {
     return const Text(
       'Sign Up',
       style: TextStyle(
-        color: Color(0xff2A4ECA),
-        fontWeight: FontWeight.bold,
-        fontSize: 32
+          color: Color(0xff2A4ECA),
+          fontWeight: FontWeight.bold,
+          fontSize: 32
       ),
     );
   }
@@ -75,7 +77,7 @@ class SignupPage extends StatelessWidget {
     return TextField(
       controller: _usernameCon,
       decoration: const InputDecoration(
-        hintText: 'Username'
+          hintText: 'Username'
       ),
     );
   }
@@ -84,7 +86,7 @@ class SignupPage extends StatelessWidget {
     return TextField(
       controller: _emailCon,
       decoration: const InputDecoration(
-        hintText: 'Email'
+          hintText: 'Email'
       ),
     );
   }
@@ -93,7 +95,7 @@ class SignupPage extends StatelessWidget {
     return TextField(
       controller: _passwordCon,
       decoration: const InputDecoration(
-        hintText: 'Password'
+          hintText: 'Password'
       ),
     );
   }
@@ -103,44 +105,76 @@ class SignupPage extends StatelessWidget {
       builder: (context) {
         return BasicAppButton(
           title: 'Create Account',
-          onPressed: (){
-          }
+          onPressed: () async {
+            String username = _usernameCon.text.trim();
+            String email = _emailCon.text.trim();
+            String password = _passwordCon.text.trim();
+
+            if (email.isEmpty || password.isEmpty || username.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please fill all fields!')),
+              );
+              return;
+            }
+
+            try {
+              UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                email: email,
+                password: password,
+              );
+
+              // Bạn có thể thêm tên người dùng vào Firestore hoặc bất kỳ dịch vụ nào khác ở đây
+
+              // Chuyển đến trang Home sau khi tạo tài khoản thành công
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const HomeLoad()),
+              );
+            } on FirebaseAuthException catch (e) {
+              String errorMessage = 'An error occurred';
+              if (e.code == 'weak-password') {
+                errorMessage = 'The password provided is too weak.';
+              } else if (e.code == 'email-already-in-use') {
+                errorMessage = 'The account already exists for that email.';
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(errorMessage)),
+              );
+            }
+          },
         );
-      }
+      },
     );
   }
 
   Widget _signinText(BuildContext context){
     return Text.rich(
       TextSpan(
-        children: [
-          const TextSpan(
-            text: 'Do you have account?',
-            style: TextStyle(
-              color: Color(0xff3B4054),
-              fontWeight: FontWeight.w500
-            )
-          ),
-           TextSpan(
-            text: ' Sign In',
-            style: const TextStyle(
-              color: Color(0xff3461FD),
-              fontWeight: FontWeight.w500
+          children: [
+            const TextSpan(
+                text: 'Do you have account?',
+                style: TextStyle(
+                    color: Color(0xff3B4054),
+                    fontWeight: FontWeight.w500
+                )
             ),
-            recognizer: TapGestureRecognizer()
-                ..onTap = () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => SigninPage(),
-                  )
-                );
-              }
-          )
-        ]
+            TextSpan(
+                text: ' Sign In',
+                style: const TextStyle(
+                    color: Color(0xff3461FD),
+                    fontWeight: FontWeight.w500
+                ),
+                recognizer: TapGestureRecognizer()
+                  ..onTap = () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => SigninPage(),
+                        )
+                    );
+                  }
+            )
+          ]
       ),
     );
   }
-
-
-
 }
