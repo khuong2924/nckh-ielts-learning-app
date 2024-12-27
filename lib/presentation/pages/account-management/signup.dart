@@ -1,14 +1,13 @@
 import 'package:auth/common/bloc/button/button_state.dart';
 import 'package:auth/common/bloc/button/button_state_cubit.dart';
 import 'package:auth/common/widgets/button/basic_app_button.dart';
-import 'package:auth/presentation/auth/components/HeaderImage.dart';
-import 'package:auth/presentation/auth/pages/signin.dart';
-import 'package:auth/presentation/home/pages/home.dart';
+import 'package:auth/presentation/pages/account-management/signin.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:auth/presentation/auth/pages/home-page.dart';
+
+import '../../components/HeaderImage.dart';
+import '../main-page/home-page.dart';
 
 class SignupPage extends StatelessWidget {
   SignupPage({super.key});
@@ -53,7 +52,7 @@ class SignupPage extends StatelessWidget {
                   const SizedBox(height: 60,),
                   _createAccountButton(context),
                   const SizedBox(height: 20,),
-                  _signinText(context)
+                   _signinText(context)
                 ],
               ),
             ),
@@ -66,9 +65,9 @@ class SignupPage extends StatelessWidget {
     return const Text(
       'Sign Up',
       style: TextStyle(
-          color: Color(0xff2A4ECA),
-          fontWeight: FontWeight.bold,
-          fontSize: 32
+        color: Color(0xff2A4ECA),
+        fontWeight: FontWeight.bold,
+        fontSize: 32
       ),
     );
   }
@@ -77,7 +76,7 @@ class SignupPage extends StatelessWidget {
     return TextField(
       controller: _usernameCon,
       decoration: const InputDecoration(
-          hintText: 'Username'
+        hintText: 'Username'
       ),
     );
   }
@@ -86,7 +85,7 @@ class SignupPage extends StatelessWidget {
     return TextField(
       controller: _emailCon,
       decoration: const InputDecoration(
-          hintText: 'Email'
+        hintText: 'Email'
       ),
     );
   }
@@ -95,7 +94,7 @@ class SignupPage extends StatelessWidget {
     return TextField(
       controller: _passwordCon,
       decoration: const InputDecoration(
-          hintText: 'Password'
+        hintText: 'Password'
       ),
     );
   }
@@ -177,4 +176,7 @@ class SignupPage extends StatelessWidget {
       ),
     );
   }
+
+
+
 }
