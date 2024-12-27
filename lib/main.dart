@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // Generated file from Firebase CLI
-import 'presentation/auth/pages/signin.dart';
+import 'presentation/pages/account-management/signin.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
