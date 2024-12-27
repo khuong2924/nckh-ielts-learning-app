@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import '../components/BottomNavBar.dart';
+import '../components/CustomAppBar.dart';
+
 class HomeLoad extends StatefulWidget {
   const HomeLoad({super.key});
 
@@ -9,6 +15,8 @@ class HomeLoad extends StatefulWidget {
 }
 
 class _HomeLoad extends State<HomeLoad> {
+  int _currentIndex = 0;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -16,7 +24,11 @@ class _HomeLoad extends State<HomeLoad> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildAppBar(),
+            CustomAppBar(
+              onNotificationTap: () {
+                // Xử lý notification
+              },
+            ),
             Expanded(
               child: SingleChildScrollView(
                 child: Padding(
@@ -34,43 +46,16 @@ class _HomeLoad extends State<HomeLoad> {
                 ),
               ),
             ),
-            _buildNavigationBar(),
+            BottomNavBar(
+              currentIndex: _currentIndex,
+              onTap: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildAppBar() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Image.asset(
-            'lib/images/starter-img.png',
-            width: 54,
-            height: 49,
-            fit: BoxFit.cover,
-          ),
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 2,
-                  blurRadius: 4,
-                )
-              ],
-            ),
-            child: IconButton(
-              icon: SvgPicture.asset('lib/icons/icons8-bell.svg'),
-              onPressed: () {},
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -127,7 +112,6 @@ class _HomeLoad extends State<HomeLoad> {
                 width: 94,
                 height: 94,
               ),
-
             ],
           ),
         ],
@@ -140,7 +124,7 @@ class _HomeLoad extends State<HomeLoad> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
     const Text(
-    'Today recommendations',
+    'Todays recommendations',
       style: TextStyle(
       fontSize: 20,
       color: Colors.white,
@@ -203,7 +187,11 @@ class _HomeLoad extends State<HomeLoad> {
             ),
             child: Center(
               child: isLocked
-                  ? SvgPicture.asset(iconPath)
+                  ? SvgPicture.asset(
+                iconPath,
+                width: 24,
+                height: 28,
+              )
                   : Image.asset(
                 iconPath,
                 width: 50,
@@ -249,55 +237,6 @@ class _HomeLoad extends State<HomeLoad> {
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildNavigationBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0x0056c9ed),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildNavItem('Home', 'lib/icons/ic-home.svg', true),
-          _buildNavItem('Flashcard', 'lib/icons/ic-homecard.png', false, isImage: true),
-          _buildNavItem('Journey', 'lib/icons/ic-journey.svg', false),
-          _buildNavItem('Profile', 'lib/icons/ic-profile.svg', false),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(String label, String iconPath, bool isActive, {bool isImage = false}) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        isImage
-            ? Image.asset(
-          iconPath,
-          width: 25,
-          height: 25,
-          fit: BoxFit.fill,
-        )
-            : SvgPicture.asset(
-          iconPath,
-          width: 25,
-          height: 25,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 6,
-            color: isActive ? const Color(0xaf4681da) : Colors.black,
-            fontFamily: 'Montserrat-SemiBold',
-          ),
-        ),
-      ],
     );
   }
 }
