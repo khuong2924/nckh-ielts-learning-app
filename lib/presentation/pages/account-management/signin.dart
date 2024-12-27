@@ -1,19 +1,21 @@
-import 'package:auth/common/bloc/button/button_state.dart';
 import 'package:auth/common/bloc/button/button_state_cubit.dart';
 import 'package:auth/common/widgets/button/basic_app_button.dart';
-import 'package:auth/presentation/auth/components/SocialLoginButtons.dart';
+import 'package:auth/presentation/pages/account-management/signup.dart';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:auth/presentation/home/pages/home.dart';
-import 'package:auth/presentation/auth/pages/signup.dart';
-import 'package:auth/presentation/auth/pages/home-page.dart';
-import '../components/HeaderImage.dart';
-import '../components/ForgetPass.dart';
 
-class SigninPage extends StatefulWidget {
-  const SigninPage({super.key});
+import '../../../../common/bloc/button/button_state.dart';
+import '../../../../main.dart';
+import '../../components/ForgetPass.dart';
+import '../../components/HeaderImage.dart';
+import '../../components/SocialLoginButtons.dart';
+
+
+
+class SigninPage extends StatelessWidget {
+  SigninPage({super.key});
 
   @override
   State<SigninPage> createState() => _SigninPageState();
@@ -35,53 +37,53 @@ class _SigninPageState extends State<SigninPage> {
     return Scaffold(
       body: BlocProvider(
         create: (context) => ButtonStateCubit(),
-        child: BlocListener<ButtonStateCubit, ButtonState>(
+        child:  BlocListener<ButtonStateCubit,ButtonState>(
           listener: (context, state) {
             if (state is ButtonSuccessState) {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => const HomeLoad()),
+                MaterialPageRoute(builder: (context) => const HomePage(),)
               );
-            } else if (state is ButtonFailureState) {
+            }
+            if (state is ButtonFailureState){
               var snackBar = SnackBar(content: Text(state.errorMessage));
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           },
           child: SafeArea(
-            minimum: const EdgeInsets.only(top: 100, right: 16, left: 16),
+            minimum: const EdgeInsets.only(top: 100,right: 16,left: 16),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const HeaderImage(),
                 _signin(),
-                const SizedBox(height: 30),
+                const SizedBox(height: 30,),
                 _emailField(),
-                const SizedBox(height: 20),
+                const SizedBox(height: 20,),
                 _password(),
-                const SizedBox(height: 30),
+                const SizedBox(height: 30,),
                 _createAccountButton(context),
-                const SizedBox(height: 20),
+                const SizedBox(height: 20,),
                 const ForgetPass(),
-                const SizedBox(height: 20),
+                const SizedBox(height: 20,),
                 SocialLoginButtons(),
-                const SizedBox(height: 20),
-                _signupText(context),
+                const SizedBox(height: 20,),
+                 _signupText(context)
               ],
             ),
           ),
         ),
-      ),
+      ) ,
     );
   }
-
-  Widget _signin() {
+  Widget _signin(){
     return const Text(
       'Sign In',
       style: TextStyle(
         color: Color(0xff2A4ECA),
         fontWeight: FontWeight.bold,
-        fontSize: 32,
+        fontSize: 32
       ),
     );
   }
@@ -159,27 +161,27 @@ class _SigninPageState extends State<SigninPage> {
       TextSpan(
         children: [
           const TextSpan(
-            text: "Don't have an account? ",
+            text: "Don't you have account?",
             style: TextStyle(
               color: Color(0xff3B4054),
-              fontWeight: FontWeight.w500,
-            ),
+              fontWeight: FontWeight.w500
+            )
           ),
-          TextSpan(
-            text: 'Sign Up',
+           TextSpan(
+            text: ' Sign Up',
             style: const TextStyle(
               color: Color(0xff3461FD),
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w500
             ),
             recognizer: TapGestureRecognizer()
-              ..onTap = () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => SignupPage(),)
-                );
-              },
-          ),
-        ],
+                ..onTap = () {
+                   Navigator.push(
+                     context,
+                     MaterialPageRoute(builder: (context) => SignupPage(), )
+                   );
+              }
+          )
+        ]
       ),
     );
   }
