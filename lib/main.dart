@@ -1,4 +1,5 @@
-import 'package:auth/presentation/auth/pages/main-page/home-page.dart';
+
+import 'package:auth/presentation/pages/main-page/home-page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -23,7 +24,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: HomeLoad(), // Replace with your HomePage widget
+      home: const HomeLoad(), // Replace with your HomePage widget
     );
   }
 }
