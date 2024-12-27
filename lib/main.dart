@@ -1,4 +1,4 @@
-import 'package:auth/presentation/auth/pages/home-page.dart';
+import 'package:auth/presentation/auth/pages/main-page/home-page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
