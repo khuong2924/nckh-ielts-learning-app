@@ -4,8 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../components/BottomNavBar.dart';
-import '../components/CustomAppBar.dart';
+import '../../components/BottomNavBar.dart';
+import '../../components/CustomAppBar.dart';
 
 class HomeLoad extends StatefulWidget {
   const HomeLoad({super.key});
