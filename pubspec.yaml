@@ -37,7 +37,7 @@ flutter:
     - lib/images/devicon_google.svg
     - lib/images/logos_facebook.svg
     - lib/images/logos_twitter.svg
-    - lib/icons/ic-bell.svg
+    - lib/icons/icons8-bell.svg
     - lib/icons/ic-flashcard.png
     - lib/icons/ic-reading.png
     - lib/icons/ic-lock.svg
