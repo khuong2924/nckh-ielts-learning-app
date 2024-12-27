@@ -123,40 +123,40 @@ class _HomeLoad extends State<HomeLoad> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-    const Text(
-    'Todays recommendations',
-      style: TextStyle(
-      fontSize: 20,
-      color: Colors.white,
-      fontFamily: 'Montserrat-Bold',
-    ),
-    ),
-    const SizedBox(height: 15),
-    _buildLessonCard(
-    title: 'Flashcard',
-    subtitle: 'Lesson 8',
-    iconPath: 'lib/icons/ic-flashcard.png',
-    score: '80/100',
-    borderColor: const Color(0xffe33629),
-    ),
-    const SizedBox(height: 15),
-    _buildLessonCard(
-    title: 'The path of the planet',
-    subtitle: 'Reading 5',
-    iconPath: 'lib/icons/ic-reading.png',
-    status: 'waiting',
-    borderColor: const Color(0xffc9c9c9),
-    ),
-    const SizedBox(height: 15),
-    _buildLessonCard(
-    title: 'Random topic',
-    subtitle: 'writing',
-    iconPath: 'lib/icons/ic-lock.svg',
-    status: 'waiting',
-    borderColor: const Color(0xffc9c9c9),
-    isLocked: true,
-    ),
-    ],
+        const Text(
+          'Todays recommendations',
+          style: TextStyle(
+            fontSize: 20,
+            color: Colors.white,
+            fontFamily: 'Montserrat-Bold',
+          ),
+        ),
+        const SizedBox(height: 15),
+        _buildLessonCard(
+          title: 'Flashcard',
+          subtitle: 'Lesson 8',
+          iconPath: 'lib/icons/ic-flashcard.png',
+          score: '80/100',
+          borderColor: const Color(0xffe33629),
+        ),
+        const SizedBox(height: 15),
+        _buildLessonCard(
+          title: 'The path of the planet',
+          subtitle: 'Reading 5',
+          iconPath: 'lib/icons/ic-reading.png',
+          status: 'waiting',
+          borderColor: const Color(0xffc9c9c9),
+        ),
+        const SizedBox(height: 15),
+        _buildLessonCard(
+          title: 'Random topic',
+          subtitle: 'writing',
+          iconPath: 'lib/icons/ic-lock.svg',
+          status: 'waiting',
+          borderColor: const Color(0xffc9c9c9),
+          isLocked: true,
+        ),
+      ],
     );
   }
 

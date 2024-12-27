@@ -1,7 +1,6 @@
 import 'package:auth/common/bloc/button/button_state_cubit.dart';
 import 'package:auth/common/widgets/button/basic_app_button.dart';
-import 'package:auth/presentation/auth/components/SocialLoginButtons.dart';
-import 'package:auth/presentation/auth/pages/account-management/signup.dart';
+import 'package:auth/presentation/pages/account-management/signup.dart';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +10,7 @@ import '../../../../common/bloc/button/button_state.dart';
 import '../../../../main.dart';
 import '../../components/ForgetPass.dart';
 import '../../components/HeaderImage.dart';
+import '../../components/SocialLoginButtons.dart';
 
 
 

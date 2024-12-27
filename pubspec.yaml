@@ -33,6 +33,7 @@ flutter:
 
   assets:
     - lib/images/starter-img.png
+    - lib/icons/ic-setting.png
 
     - lib/images/devicon_google.svg
     - lib/images/logos_facebook.svg
@@ -47,4 +48,3 @@ flutter:
     - lib/icons/ic-circle.svg
     - lib/icons/ic-graph.svg
     - lib/icons/ic-homecard.png
-
