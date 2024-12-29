@@ -1,3 +1,4 @@
+import 'package:auth/presentation/pages/account-management/complaint-page.dart';
 import 'package:auth/presentation/pages/account-management/profile-page.dart';
 import 'package:auth/presentation/pages/main-page/home-page.dart';
 import 'package:auth/presentation/pages/main-page/setting-page.dart';
@@ -25,7 +26,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: ProfilePage(), // Start with SigninPage
+      home: ComplaintPage(), // Start with SigninPage
     );
   }
 }
