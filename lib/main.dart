@@ -1,3 +1,5 @@
+import 'package:auth/presentation/pages/main-page/home-page.dart';
+import 'package:auth/presentation/pages/main-page/setting-page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // Generated file from Firebase CLI
@@ -22,7 +24,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: SigninPage(), // Start with SigninPage
+      home: SettingPage(), // Start with SigninPage
     );
   }
 }
