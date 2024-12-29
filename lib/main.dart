@@ -1,3 +1,4 @@
+import 'package:auth/presentation/pages/account-management/profile-page.dart';
 import 'package:auth/presentation/pages/main-page/home-page.dart';
 import 'package:auth/presentation/pages/main-page/setting-page.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: SettingPage(), // Start with SigninPage
+      home: ProfilePage(), // Start with SigninPage
     );
   }
 }
