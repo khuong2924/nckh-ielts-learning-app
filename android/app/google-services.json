@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1057013810704",
+    "project_id": "nckh-ieltslearningapp",
+    "storage_bucket": "nckh-ieltslearningapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1057013810704:android:fa2e0b2cf4a5591946ac95",
+        "android_client_info": {
+          "package_name": "com.android.application"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBeLZ21eeCfllbfVFKLL3Tt0TLhfDL86yA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1057013810704:android:816a2f0ed47afcf846ac95",
+        "android_client_info": {
+          "package_name": "com.example.auth"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBeLZ21eeCfllbfVFKLL3Tt0TLhfDL86yA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

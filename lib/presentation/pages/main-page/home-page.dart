@@ -81,11 +81,11 @@ class _HomeLoad extends State<HomeLoad> {
       ),
       child: Row(
         children: [
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Great, you\'ve logged in 7 days in a row!',
                   style: TextStyle(
                     fontSize: 16,
@@ -93,7 +93,7 @@ class _HomeLoad extends State<HomeLoad> {
                     fontFamily: 'Montserrat-Bold',
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Text(
                   '37/10/2024',
                   style: TextStyle(
