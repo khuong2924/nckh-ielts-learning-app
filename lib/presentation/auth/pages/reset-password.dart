@@ -7,16 +7,12 @@ import 'package:auth/presentation/home/pages/home.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:auth/common/bloc/button/button_state.dart';
 import 'package:auth/common/bloc/button/button_state_cubit.dart';
 import 'package:auth/common/widgets/button/basic_app_button.dart';
-
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
