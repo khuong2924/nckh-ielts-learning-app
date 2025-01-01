@@ -1,6 +1,8 @@
-import 'package:auth/presentation/auth/pages/reset-password.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+
+import '../pages/account-management/reset-password.dart';
 
 class ForgetPass extends StatefulWidget {
   const ForgetPass({super.key});
