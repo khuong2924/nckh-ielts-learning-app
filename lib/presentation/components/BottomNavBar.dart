@@ -1,11 +1,11 @@
+import 'package:auth/presentation/pages/main-page/home-page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 // Đảm bảo import trang ComplaintPage
 
-import 'package:auth/presentation/pages/account-management/profile-page.dart';
 
-import 'package:auth/presentation/pages/main-page/home-page.dart';
-import 'package:auth/presentation/pages/account-management/complaint-page.dart';
+
+import 'package:auth/presentation/pages/main-page/setting-page.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -37,18 +37,12 @@ class BottomNavBar extends StatelessWidget {
             );
           }),
           _buildNavItem('Flashcard', 'lib/icons/ic-homecard.png', currentIndex == 1, isImage: true, onTap: () => onTap(1)),
-          _buildNavItem('Journey', 'lib/icons/ic-journey.svg', currentIndex == 2, onTap: () {
-            onTap(2);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => ComplaintPage()), // Điều hướng đến ComplaintPage
-            );
-          }),
+          _buildNavItem('Journey', 'lib/icons/ic-journey.svg', currentIndex == 2, onTap: ()=> onTap(2)),
           _buildNavItem('Profile', 'lib/icons/ic-profile.svg', currentIndex == 3, onTap: () {
             onTap(3);
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => ProfilePage()), // Điều hướng đến ProfilePage
+              MaterialPageRoute(builder: (context) => SettingPage()), // Điều hướng đến ProfilePage
             );
           }),
 
