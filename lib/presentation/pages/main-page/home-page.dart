@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import 'package:auth/presentation/pages/account-management/profile-page.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 
@@ -52,12 +51,6 @@ class _HomeLoad extends State<HomeLoad> {
               onTap: (index) {
                 setState(() {
                   _currentIndex = index;
-                  if (index == 3) { // Điều hướng đến ProfilePage
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => ProfilePage()),
-                    );
-                  }
                 });
               },
             ),
