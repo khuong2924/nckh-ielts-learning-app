@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:auth/presentation/pages/account-management/profile-page.dart';
+import 'package:auth/presentation/pages/account-management/complaint-page.dart';
 
-
-// Thêm SettingsCardSection Widget
 class SettingsCardSection extends StatelessWidget {
   const SettingsCardSection({Key? key}) : super(key: key);
 
@@ -29,24 +28,42 @@ class SettingsCardSection extends StatelessWidget {
             icon: 'lib/icons/ic-setting.png',
             title: 'Setting',
             backgroundColor: const Color(0xFFD1EDFF),
+            onTap: () {
+              // Tạm thời để trống
+            },
           ),
           const SizedBox(height: 15),
           _buildSettingItem(
             icon: 'lib/icons/ic-report.png',
             title: 'Report',
             backgroundColor: const Color(0xFFC5E8FF),
+            onTap: () {
+              // Xử lý khi nhấn vào Report (nếu cần)
+            },
           ),
           const SizedBox(height: 15),
           _buildSettingItem(
             icon: 'lib/icons/ic-error.png',
             title: 'Complaint',
             backgroundColor: const Color(0xFFC5E8FF),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ComplaintPage()),
+              );
+            },
           ),
           const SizedBox(height: 15),
           _buildSettingItem(
             icon: 'lib/images/starter-img-setting.png',
             title: 'Personalization',
             backgroundColor: const Color(0xFFC5E8FF),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ProfilePage()),
+              );
+            },
           ),
         ],
       ),
@@ -57,12 +74,12 @@ class SettingsCardSection extends StatelessWidget {
     required String icon,
     required String title,
     required Color backgroundColor,
+    required VoidCallback onTap,
   }) {
     return InkWell(
-      onTap: () {
-        // Xử lý khi nhấn vào item
-      },
+      onTap: onTap,
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Container(
             width: 63,

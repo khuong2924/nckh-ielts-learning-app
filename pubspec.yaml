@@ -36,11 +36,17 @@ flutter:
 
   assets:
     - lib/images/starter-img.png
+    - lib/images/starter-img-setting.png
+    - lib/icons/ic-setting.png
+    - lib/icons/ic-report.png
+    - lib/icons/ic-complaint.svg
+    - lib/icons/ic-error.png
+
 
     - lib/images/devicon_google.svg
     - lib/images/logos_facebook.svg
     - lib/images/logos_twitter.svg
-    - lib/icons/ic-bell.svg
+    - lib/icons/icons8-bell.svg
     - lib/icons/ic-flashcard.png
     - lib/icons/ic-reading.png
     - lib/icons/ic-lock.svg
@@ -50,4 +56,3 @@ flutter:
     - lib/icons/ic-circle.svg
     - lib/icons/ic-graph.svg
     - lib/icons/ic-homecard.png
-
