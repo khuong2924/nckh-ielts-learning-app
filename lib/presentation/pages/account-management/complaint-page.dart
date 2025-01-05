@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 class ComplaintPage extends StatefulWidget {
   const ComplaintPage({super.key});
 
@@ -224,7 +225,7 @@ class _ComplaintFormState extends State<ComplaintForm> {
             Checkbox(
               value: widget.isChecked,
               onChanged: (bool? value) {
-                widget.onCheckChanged(value!);
+                widget.onCheckChanged(value!); // Cập nhật giá trị checkbox
               },
             ),
             const Text("I'm sure this is real"),
@@ -248,9 +249,9 @@ class _ComplaintFormState extends State<ComplaintForm> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: widget.isChecked ? _submitComplaint : null,
+        onPressed: widget.isChecked ? _submitComplaint : null, // Chỉ cho phép gửi khi isChecked là true
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2C2C2C),
+          backgroundColor: widget.isChecked ? const Color(0xFF2C2C2C) : Colors.grey, // Thay đổi màu nút nếu không được phép
           padding: const EdgeInsets.all(12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
@@ -264,9 +265,48 @@ class _ComplaintFormState extends State<ComplaintForm> {
     );
   }
 
-  void _submitComplaint() {
-    // Handle complaint submission
-    print('Submitting complaint...');
-    // Add your submission logic here
+
+  void _submitComplaint() async {
+    if (_nameController.text.isEmpty || _problemDetailController.text.isEmpty ||
+        _selectedProblemType == 'Select problem type') {
+      // Hiển thị thông báo lỗi nếu các trường không hợp lệ
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
+
+    // Lấy thông tin người dùng đang đăng nhập
+    User? user = FirebaseAuth.instance.currentUser;
+
+    // Tạo một bản ghi mới trong Firestore
+    try {
+      await FirebaseFirestore.instance.collection('complaints').add({
+        'user_id': user?.uid, // Lưu ID người dùng
+        'name': _nameController.text,
+        'problem_detail': _problemDetailController.text,
+        'problem_type': _selectedProblemType,
+        'is_checked': widget.isChecked,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      // Hiển thị thông báo thành công
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Complaint submitted successfully!')),
+      );
+
+      // Xóa dữ liệu sau khi gửi
+      _nameController.clear();
+      _problemDetailController.clear();
+      setState(() {
+        _selectedProblemType = 'Select problem type';
+        widget.onCheckChanged(false); // Reset checkbox
+      });
+    } catch (e) {
+      print('Error submitting complaint: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit complaint')),
+      );
+    }
   }
 }
