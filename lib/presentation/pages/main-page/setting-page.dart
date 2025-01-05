@@ -61,7 +61,7 @@ class _SettingPage extends State<SettingPage> {
 
   Widget _starterImg() {
     return Image.asset(
-      'lib/images/starter-img-setting.png',
+      'lib/images/starter-img-setting.png',  // Đảm bảo đường dẫn đúng
       width: 150,
       height: 150,
       fit: BoxFit.fill,

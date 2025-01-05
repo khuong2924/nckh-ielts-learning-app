@@ -133,7 +133,7 @@ class _SignupPageState extends State<SignupPage> {
         return BasicAppButton(
           title: 'Create Account',
           onPressed: () async {
-            String username = _usernameCon.text.trim();
+            String username = _usernameCon.text.trim(); // Get username
             String email = _emailCon.text.trim();
             String password = _passwordCon.text.trim();
 
@@ -150,13 +150,17 @@ class _SignupPageState extends State<SignupPage> {
                 password: password,
               );
 
-              // Lưu thông tin người dùng vào Firestore
+              // Save user information to Firestore with the entered username
               await FirebaseFirestore.instance.collection('users').doc(userCredential.user?.uid).set({
-                'username': username,
-                'email': email,
+                'username': username, // Save the entered username
+                'email': email,       // Save the email
+                'gender': '',         // Empty field
+                'birthDate': '',      // Empty field
+                'phone': '',          // Empty field
+                'goal': '',           // Empty field
               });
 
-              // Phát ra trạng thái thành công
+              // Emit success state
               context.read<ButtonStateCubit>().emit(ButtonSuccessState());
 
             } on FirebaseAuthException catch (e) {

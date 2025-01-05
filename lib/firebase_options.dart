@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -43,38 +40,47 @@ class DefaultFirebaseOptions {
     }
   }
 
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyAIwtHztAszyFr8h_CSHyO0qoBzEQIlXe8',
+    appId: '1:183771054572:web:39f4adf924bddb14e1c0c9',
+    messagingSenderId: '183771054572',
+    projectId: 'nckh-c7b76',
+    authDomain: 'nckh-c7b76.firebaseapp.com',
+    storageBucket: 'nckh-c7b76.firebasestorage.app',
+  );
+
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBeLZ21eeCfllbfVFKLL3Tt0TLhfDL86yA',
-    appId: '1:1057013810704:android:fa2e0b2cf4a5591946ac95',
-    messagingSenderId: '1057013810704',
-    projectId: 'nckh-ieltslearningapp',
-    storageBucket: 'nckh-ieltslearningapp.firebasestorage.app',
+    apiKey: 'AIzaSyAb6Xjxc73Uv2J1F6iY-4parB0pSQoF5eE',
+    appId: '1:183771054572:android:00d8590169915017e1c0c9',
+    messagingSenderId: '183771054572',
+    projectId: 'nckh-c7b76',
+    storageBucket: 'nckh-c7b76.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBEHMVRm5H7KhG93gEv6utLrLKK8wDjVlo',
-    appId: '1:1057013810704:ios:83ec517b4558550946ac95',
-    messagingSenderId: '1057013810704',
-    projectId: 'nckh-ieltslearningapp',
-    storageBucket: 'nckh-ieltslearningapp.firebasestorage.app',
+    apiKey: 'AIzaSyARii0-aK5Ay4OLJZVKgMOb5FP4vw-tYnI',
+    appId: '1:183771054572:ios:47dd0aa2533d5cbce1c0c9',
+    messagingSenderId: '183771054572',
+    projectId: 'nckh-c7b76',
+    storageBucket: 'nckh-c7b76.firebasestorage.app',
     iosBundleId: 'com.example.auth',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBEHMVRm5H7KhG93gEv6utLrLKK8wDjVlo',
-    appId: '1:1057013810704:ios:83ec517b4558550946ac95',
-    messagingSenderId: '1057013810704',
-    projectId: 'nckh-ieltslearningapp',
-    storageBucket: 'nckh-ieltslearningapp.firebasestorage.app',
+    apiKey: 'AIzaSyARii0-aK5Ay4OLJZVKgMOb5FP4vw-tYnI',
+    appId: '1:183771054572:ios:47dd0aa2533d5cbce1c0c9',
+    messagingSenderId: '183771054572',
+    projectId: 'nckh-c7b76',
+    storageBucket: 'nckh-c7b76.firebasestorage.app',
     iosBundleId: 'com.example.auth',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBkpF3YhytCcUrdTixEXiPwjFDd1X5xIV8',
-    appId: '1:1057013810704:web:199a7c7683acfdab46ac95',
-    messagingSenderId: '1057013810704',
-    projectId: 'nckh-ieltslearningapp',
-    authDomain: 'nckh-ieltslearningapp.firebaseapp.com',
-    storageBucket: 'nckh-ieltslearningapp.firebasestorage.app',
+    apiKey: 'AIzaSyAIwtHztAszyFr8h_CSHyO0qoBzEQIlXe8',
+    appId: '1:183771054572:web:5a14622d566ebe60e1c0c9',
+    messagingSenderId: '183771054572',
+    projectId: 'nckh-c7b76',
+    authDomain: 'nckh-c7b76.firebaseapp.com',
+    storageBucket: 'nckh-c7b76.firebasestorage.app',
   );
 }
