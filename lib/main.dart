@@ -1,12 +1,7 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // Generated file from Firebase CLI
-import 'package:auth/presentation/pages/account-management/signin.dart';
-import 'package:auth/presentation/pages/main-page/setting-page.dart';
-
-import 'package:auth/presentation/pages/account-management/complaint-page.dart';
-
+import 'package:auth/presentation/pages/main-page/sample-test-home-page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +22,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: SigninPage(), // Start with SigninPage
+      home: const SampleTestHomePage(), // tạm thời bỏ qua SignIn
     );
   }
 }
