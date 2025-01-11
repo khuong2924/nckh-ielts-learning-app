@@ -68,7 +68,7 @@ class ResetPassword extends StatelessWidget {
         String email = _emailCon.text.trim();
         if (email.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please enter your email')),
+            const SnackBar(content: Text('Please enter')),
           );
           return;
         }
