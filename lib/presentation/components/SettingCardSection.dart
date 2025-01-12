@@ -1,3 +1,4 @@
+import 'package:auth/presentation/pages/friends-page/list-friends-page.dart';
 import 'package:flutter/material.dart';
 import 'package:auth/presentation/pages/account-management/profile-page.dart';
 import 'package:auth/presentation/pages/account-management/complaint-page.dart';
@@ -57,7 +58,7 @@ class SettingsCardSection extends StatelessWidget {
             title: 'Report',
             backgroundColor: const Color(0xFFC5E8FF),
             onTap: () {
-              // Xử lý khi nhấn vào Report (nếu cần)
+
             },
           ),
           const SizedBox(height: 15),
@@ -82,6 +83,20 @@ class SettingsCardSection extends StatelessWidget {
                 context,
                 MaterialPageRoute(builder: (context) => ProfilePage()),
               );
+            },
+          ),
+
+          const SizedBox(height: 15),
+          _buildSettingItem(
+            icon: 'lib/icons/ic-people.png',
+            title: 'Friends',
+            backgroundColor: const Color(0xFFC5E8FF),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => FriendsPage()),
+              );
+
             },
           ),
         ],
