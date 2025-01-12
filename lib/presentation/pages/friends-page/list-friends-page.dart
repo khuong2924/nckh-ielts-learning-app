@@ -1,3 +1,4 @@
+import 'package:auth/presentation/pages/friends-page/connect-friends-page.dart';
 import 'package:flutter/material.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
@@ -78,6 +79,11 @@ class _FriendsPageState extends State<FriendsPage> {
               height: 32,
             ),
             onPressed: () {
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ConnectFriendPage()),
+              );
 
             },
           ),
