@@ -43,6 +43,8 @@ flutter:
     - lib/icons/ic-report.png
     - lib/icons/ic-complaint.svg
     - lib/icons/ic-error.png
+    - lib/icons/ic-people.png
+    - lib/icons/ic-add.png
 
 
     - lib/images/devicon_google.svg

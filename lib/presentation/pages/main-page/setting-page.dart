@@ -36,9 +36,9 @@ class _SettingPage extends State<SettingPage> {
                 child: Column(
                   children: [
                     _starterImg(),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 5),
                     _titleSetting(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 15),
                     const SettingsCardSection(),
                   ],
                 ),
@@ -79,4 +79,9 @@ class _SettingPage extends State<SettingPage> {
       ),
     );
   }
+
+
+
+
+
 }

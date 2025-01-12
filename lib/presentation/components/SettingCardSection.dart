@@ -1,6 +1,9 @@
+import 'package:auth/presentation/pages/friends-page/list-friends-page.dart';
 import 'package:flutter/material.dart';
 import 'package:auth/presentation/pages/account-management/profile-page.dart';
 import 'package:auth/presentation/pages/account-management/complaint-page.dart';
+
+import 'SettingModal.dart';
 
 class SettingsCardSection extends StatelessWidget {
   const SettingsCardSection({Key? key}) : super(key: key);
@@ -29,7 +32,24 @@ class SettingsCardSection extends StatelessWidget {
             title: 'Setting',
             backgroundColor: const Color(0xFFD1EDFF),
             onTap: () {
-              // Tạm thời để trống
+              showDialog(
+                context: context,
+                builder: (context) => SettingsModal(
+                  onThemeChanged: (value) {
+                    // Handle theme change
+                    print('Theme changed to: $value');
+                  },
+                  onNotificationChanged: (value) {
+                    // Handle notification change
+                    print('Notifications changed to: $value');
+                  },
+                  onSave: () {
+                    // Handle save
+                    print('Settings saved');
+                    Navigator.pop(context);
+                  },
+                ),
+              );
             },
           ),
           const SizedBox(height: 15),
@@ -38,7 +58,7 @@ class SettingsCardSection extends StatelessWidget {
             title: 'Report',
             backgroundColor: const Color(0xFFC5E8FF),
             onTap: () {
-              // Xử lý khi nhấn vào Report (nếu cần)
+
             },
           ),
           const SizedBox(height: 15),
@@ -63,6 +83,20 @@ class SettingsCardSection extends StatelessWidget {
                 context,
                 MaterialPageRoute(builder: (context) => ProfilePage()),
               );
+            },
+          ),
+
+          const SizedBox(height: 15),
+          _buildSettingItem(
+            icon: 'lib/icons/ic-people.png',
+            title: 'Friends',
+            backgroundColor: const Color(0xFFC5E8FF),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => FriendsPage()),
+              );
+
             },
           ),
         ],
