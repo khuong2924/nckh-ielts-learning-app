@@ -2,23 +2,30 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class TestCard extends StatelessWidget {
-  final String title;
-  final String description;
+  final String? title;
+  final String? description;
   final VoidCallback? onTap;
 
   const TestCard({
     Key? key,
-    this.title = '',
-    this.description = '',
+    this.title,
+    this.description,
     this.onTap,
   }) : super(key: key);
+
+  factory TestCard.fromJson(Map<String, dynamic> json) {
+    return TestCard(
+      title: json['title'],
+      description: json['description'],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: double.infinity, // Chuyển từ width: 350
+        width: double.infinity,
         height: 150,
         decoration: ShapeDecoration(
           color: Colors.white,
@@ -35,7 +42,7 @@ class TestCard extends StatelessWidget {
           ],
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min, // Thêm dòng này
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Left black container
             Container(
@@ -50,10 +57,10 @@ class TestCard extends StatelessWidget {
                   ),
                 ),
               ),
-              child: Center(
+              child: const Center(
                 child: Text(
                   'Image',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -62,7 +69,7 @@ class TestCard extends StatelessWidget {
               ),
             ),
             // Right content
-            Expanded( // Thay đổi kích thước tự động
+            Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -70,7 +77,7 @@ class TestCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      title ?? '',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -78,7 +85,7 @@ class TestCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      description,
+                      description ?? '',
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.grey,
@@ -86,7 +93,7 @@ class TestCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      width: double.infinity, // Để tránh tràn, thay vì cố định 160
+                      width: double.infinity,
                       height: 36,
                       decoration: ShapeDecoration(
                         color: const Color(0xFF0067AC),
