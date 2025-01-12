@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
-import '../../model/TestCard.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:auth/presentation/model/TestCard.dart'; // Import TestCard
+import 'package:auth/presentation/service/SupabaseService.dart'; // Import SupabaseService
 
 // SearchResultHeader Widget
 class SearchResultHeader extends StatelessWidget {
@@ -46,18 +48,73 @@ class SearchResultHeader extends StatelessWidget {
   }
 }
 
-class SampleTestHomePage extends StatefulWidget {
-  const SampleTestHomePage({super.key});
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  _SampleTestHomePageState createState() => _SampleTestHomePageState();
+  _HomePageState createState() => _HomePageState();
 }
 
-class _SampleTestHomePageState extends State<SampleTestHomePage> {
+class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   String _currentSearchQuery = "";
   int _resultCount = 0;
+  List<TestCard> _tests = [];
+  List<TestCard> _filteredTests = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  final SupabaseService _supabaseService = SupabaseService();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTests();
+  }
+
+  Future<void> _fetchTests() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final tests = await _supabaseService.fetchTests();
+      setState(() {
+        _tests = tests.map((e) => TestCard.fromJson(e)).toList();
+        _filteredTests = _tests;
+        _resultCount = _tests.length;
+      });
+    } on PostgrestException catch (e) {
+      setState(() {
+        _errorMessage = 'Error fetching tests: ${e.message}';
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Unexpected error: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _filterTests(String query) {
+    setState(() {
+      _currentSearchQuery = query;
+      if (query.isEmpty) {
+        _filteredTests = _tests;
+      } else {
+        _filteredTests = _tests
+            .where((test) =>
+        (test.title?.toLowerCase().contains(query.toLowerCase()) == true ||
+            test.description?.toLowerCase().contains(query.toLowerCase()) ==
+                true))
+            .toList();
+      }
+      _resultCount = _filteredTests.length;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +135,6 @@ class _SampleTestHomePageState extends State<SampleTestHomePage> {
                   // Handle notification
                 },
               ),
-
               Expanded(
                 child: SingleChildScrollView(
                   child: Padding(
@@ -91,38 +147,48 @@ class _SampleTestHomePageState extends State<SampleTestHomePage> {
                         const SizedBox(height: 20),
                         _buildSearchBar(),
                         const SizedBox(height: 20),
-                        // Add SearchResultHeader here
                         SearchResultHeader(
                           searchQuery: _currentSearchQuery,
                           resultCount: _resultCount,
                         ),
                         const SizedBox(height: 20),
-                        ListView.builder(
+                        _isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : _errorMessage != null
+                            ? Center(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(
+                                fontSize: 16, color: Colors.red),
+                          ),
+                        )
+                            : _filteredTests.isEmpty
+                            ? const Center(
+                          child: Text(
+                            "No tests available",
+                            style: TextStyle(
+                                fontSize: 16, color: Colors.grey),
+                          ),
+                        )
+                            : ListView.builder(
                           shrinkWrap: true,
-                          physics: NeverScrollableScrollPhysics(),
-                          itemCount: 2,
+                          physics:
+                          const NeverScrollableScrollPhysics(),
+                          itemCount: _filteredTests.length,
                           itemBuilder: (context, index) {
+                            final test = _filteredTests[index];
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 16.0),
-                              child: TestCard(
-                                title: 'IELTS Test 1',
-                                description: 'Practice test for IELTS examination',
-                                onTap: () {
-                                  // when click...
-
-                                },
-                              ),
+                              padding: const EdgeInsets.only(
+                                  bottom: 16.0),
+                              child: test,
                             );
                           },
-                        )
-
-                        // Add more content here
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
-
               BottomNavBar(
                 currentIndex: _currentIndex,
                 onTap: (index) {
@@ -187,10 +253,7 @@ class _SampleTestHomePageState extends State<SampleTestHomePage> {
                 ),
               ),
               onChanged: (value) {
-                // Optional: update search results as user types
-                setState(() {
-                  _currentSearchQuery = value;
-                });
+                _filterTests(value);
               },
             ),
           ),
@@ -211,12 +274,7 @@ class _SampleTestHomePageState extends State<SampleTestHomePage> {
                 size: 20,
               ),
               onPressed: () {
-                // Handle search and update results
-                setState(() {
-                  _currentSearchQuery = _searchController.text;
-                  // Simulate finding results - replace with actual search logic
-                  _resultCount = 24; // Example count
-                });
+                _filterTests(_searchController.text);
               },
             ),
           ),
@@ -224,12 +282,4 @@ class _SampleTestHomePageState extends State<SampleTestHomePage> {
       ),
     );
   }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-
 }
