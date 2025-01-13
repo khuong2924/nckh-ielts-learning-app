@@ -1,3 +1,4 @@
+import 'package:auth/presentation/pages/friends-page/connect-friends-page.dart';
 import 'package:flutter/material.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
@@ -79,6 +80,11 @@ class _FriendsPageState extends State<FriendsPage> {
             ),
             onPressed: () {
 
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ConnectFriendPage()),
+              );
+
             },
           ),
         ),
@@ -153,7 +159,7 @@ class _FriendsPageState extends State<FriendsPage> {
                 ),
               ),
               Text(
-                'What should we make?',
+                ' --the last message--',
                 style: TextStyle(
                   color: Color(0xFF49454F),
                   fontSize: 14,
