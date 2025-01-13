@@ -9,6 +9,7 @@ environment:
   sdk: '>=3.4.3 <4.0.0'
 
 dependencies:
+  audioplayers: ^5.2.1
   flutter:
     sdk: flutter
   flutter_svg: ^1.0.3
@@ -45,6 +46,7 @@ flutter:
     - lib/icons/ic-error.png
     - lib/icons/ic-people.png
     - lib/icons/ic-add.png
+    - lib/icons/ic-audio.png
 
 
     - lib/images/devicon_google.svg

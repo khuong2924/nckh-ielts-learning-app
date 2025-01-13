@@ -159,7 +159,7 @@ class _FriendsPageState extends State<FriendsPage> {
                 ),
               ),
               Text(
-                'What should we make?',
+                ' --the last message--',
                 style: TextStyle(
                   color: Color(0xFF49454F),
                   fontSize: 14,
