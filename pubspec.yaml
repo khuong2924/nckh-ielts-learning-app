@@ -47,6 +47,7 @@ flutter:
     - lib/icons/ic-people.png
     - lib/icons/ic-add.png
     - lib/icons/ic-audio.png
+    - lib/icons/ic-back.svg
 
 
     - lib/images/devicon_google.svg
