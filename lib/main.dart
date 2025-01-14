@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // File được tạo bởi Firebase CLI
 import 'package:auth/presentation/pages/account-management/signin.dart';
-
+import 'package:auth/presentation/pages/reading/reading-home.dart';
 import 'package:auth/presentation/pages/main-page/sample-test-home-page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase package
 
@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: const HomePage(), // Để lại SigninPage như cũ
+      home: const ReadingHome(), // Để lại SigninPage như cũ
     );
   }
 }
