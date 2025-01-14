@@ -1,5 +1,3 @@
-import 'package:auth/presentation/pages/test-page/listening-page.dart';
-import 'package:auth/presentation/pages/reading/reading-home.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // File được tạo bởi Firebase CLI
@@ -36,7 +34,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: const ReadingHome(), // Để lại SigninPage như cũ
+      home: const HomePage(), // Để lại SigninPage như cũ
     );
   }
 }
