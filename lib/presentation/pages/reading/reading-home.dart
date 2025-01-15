@@ -14,14 +14,14 @@ class ReadingHome extends StatefulWidget {
 
 class _ReadingHomeState extends State<ReadingHome> {
   int _currentIndex = 0;
-  bool _isCheckedOption1 = false;
-  bool _isCheckedOption2 = false;
-  bool _isCheckedOption3 = false;
-  bool _isCheckedOption4 = false;
+  bool _checkOption1 = false;
+  bool _checkOption2 = false;
+  bool _checkOption3 = false;
+  bool _checkOption4 = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFCFEBFF), // Thêm màu nền gradient
+      backgroundColor: const Color(0xFFCFEBFF),
       body: SafeArea(
         child: Column(
           children: [
@@ -36,10 +36,10 @@ class _ReadingHomeState extends State<ReadingHome> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
-                    _buildPart1(),
+                    _buildPart('1-13', '1'),
                     _quesPas1(),
                     const SizedBox(height: 20),
-                    _buildPart2(),
+                    _buildPart('14-26', '2'),
                     _quesPas2(),
                     _buildSubmitButton(),
                   ],
@@ -83,486 +83,55 @@ class _ReadingHomeState extends State<ReadingHome> {
       ),
     );
   }
-  Widget _buildPart1() {
-    return Padding(
-      padding: const EdgeInsets.all(1.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 5),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: RichText(
-              text: TextSpan(
-                children: [
-                  const TextSpan(
-                    text: 'Questions 1-13. Click ',
-                    style: TextStyle(
-                      color: Color(0xFF404040),
-                      fontSize: 15,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'here', // Từ "here" có màu đỏ
-                    style: const TextStyle(
-                      color: Colors.red, // Màu đỏ cho từ "here"
-                      fontSize: 15,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.italic,
-                    ),
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () {
-                        _showDialog1(context); // Gọi hàm hiển thị dialog khi nhấn vào "here"
-                      },
-                  ),
-                  const TextSpan(
-                    text: ' to read passage 1',
-                    style: TextStyle(
-                      color: Color(0xFF404040),
-                      fontSize: 15,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-        ],
-      ),
-    );
-  }
-  void _showDialog1(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Passage 1'),
-          content: const Text(
-            'Here is a passage where you can read about various topics. It will help you practice reading comprehension skills.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Đóng dialog
-              },
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-  void _showDialog2(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Passage 2'),
-          content: const Text(
-            'Here is a passage where you can read about various topics. It will help you practice reading comprehension skills.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Đóng dialog
-              },
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
   Widget _quesPas1() {
     return Padding(
       padding: const EdgeInsets.all(1.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 5),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Write your answers in boxes 1-6 on your answer sheet',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
           const SizedBox(height: 10),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '- The 1____ of London increased rapidly between 1800 and 1850.',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 5),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '- The streets were full of horse-drawn vehicles.',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 5),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '- The 2____ of London increased rapidly between 1800 and 1850.',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 5),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '- The streets were full of horse-drawn vehicles.',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 5),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '- The 3____ of London increased rapidly between 1800 and 1850.',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 5),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '- The streets were full of horse-drawn vehicles.',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
+          _buildPartQ('Write your answers in boxes 1-6 on your answer sheet'),
           const SizedBox(height: 10),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(4.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Answer 1',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                      labelStyle: TextStyle(
-                        color: Color(0xFF0067AC),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(4.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Answer 2',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                      labelStyle: TextStyle(
-                        color: Color(0xFF0067AC),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          _buildQ('- The 1____ of London increased rapidly between 1800 and 1850.'),
+          const SizedBox(height: 5),
+          _buildQ('- The streets were full of horse-drawn vehicles.'),
+          const SizedBox(height: 5),
+          _buildQ('- The 2____ of London increased rapidly between 1800 and 1850.'),
+          const SizedBox(height: 5),
+          _buildQ('- The streets were full of horse-drawn vehicles.'),
+          const SizedBox(height: 5),
+          _buildQ('- The 3____ of London increased rapidly between 1800 and 1850.'),
+          const SizedBox(height: 5),
+          _buildQ('- The streets were full of horse-drawn vehicles.'),
           const SizedBox(height: 10),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(4.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Answer 3',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                      labelStyle: TextStyle(
-                        color: Color(0xFF0067AC),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(4.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Answer 4',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                      labelStyle: TextStyle(
-                        color: Color(0xFF0067AC),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          _buildRow2('Answer 1', 'Answer 2'),
           const SizedBox(height: 10),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(4.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Answer 5',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                      labelStyle: TextStyle(
-                        color: Color(0xFF0067AC),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(4.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Answer 6',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                      labelStyle: TextStyle(
-                        color: Color(0xFF0067AC),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          _buildRow2('Answer 3', 'Answer 4'),
           const SizedBox(height: 10),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'In boxes 7-13 on your answer sheet, write True, False, NG.',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
+          _buildRow2('Answer 5', 'Answer 6'),
           const SizedBox(height: 10),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '7. Other countries had built underground railways before the Metropolitan line openened.',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 15),
+          _buildPartQ('In boxes 7-13 on your answer sheet, write True, False, NG.'),
+          const SizedBox(height: 10),
+          _buildQ('7. Other countries had built underground railways before the Metropolitan line openened.'),
+          const SizedBox(height: 10),
           Container(
-            width: 150, // Đặt chiều rộng cố định cho TextField
-            child: const TextField(
-              decoration: InputDecoration(
-                labelText: 'Answer 7',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                labelStyle: TextStyle(
-                  color: Color(0xFF0067AC),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                ),
-              ),
-            ),
+            width: 150,
+            child: _buildRow('Answer 7'),
           ),
           const SizedBox(height: 10),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '8. Other countries had built underground railways before the Metropolitan line openened.',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 15),
+          _buildQ('8. Other countries had built underground railways before the Metropolitan line openened.'),
+          const SizedBox(height: 10),
           Container(
-            width: 150, // Đặt chiều rộng cố định cho TextField
-            child: const TextField(
-              decoration: InputDecoration(
-                labelText: 'Answer 8',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                labelStyle: TextStyle(
-                  color: Color(0xFF0067AC),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                ),
-              ),
-            ),
+            width: 150,
+            child: _buildRow('Answer 8'),
           ),
           const SizedBox(height: 10),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '9. Other countries had built underground railways before the Metropolitan line openened.',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 15),
+          _buildQ('9. Other countries had built underground railways before the Metropolitan line openened.'),
+          const SizedBox(height: 10),
           Container(
-            width: 150, // Đặt chiều rộng cố định cho TextField
-            child: const TextField(
-              decoration: InputDecoration(
-                labelText: 'Answer 9',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                labelStyle: TextStyle(
-                  color: Color(0xFF0067AC),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                ),
-              ),
-            ),
+            width: 150,
+            child: _buildRow('Answer 9'),
           ),
-        ],
-      ),
-    );
-  }
-  Widget _buildPart2() {
-    return Padding(
-      padding: const EdgeInsets.all(1.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 5),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: RichText(
-              text: TextSpan(
-                children: [
-                  const TextSpan(
-                    text: 'Questions 14-26. Click ',
-                    style: TextStyle(
-                      color: Color(0xFF404040),
-                      fontSize: 15,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'here', // Từ "here" có màu đỏ
-                    style: const TextStyle(
-                      color: Colors.red, // Màu đỏ cho từ "here"
-                      fontSize: 15,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.italic,
-                    ),
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () {
-                        _showDialog2(context); // Gọi hàm hiển thị dialog khi nhấn vào "here"
-                      },
-                  ),
-                  const TextSpan(
-                    text: ' to read passage 2',
-                    style: TextStyle(
-                      color: Color(0xFF404040),
-                      fontSize: 15,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
         ],
       ),
     );
@@ -574,350 +143,126 @@ class _ReadingHomeState extends State<ReadingHome> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 5),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Which section contains the following information? Write the correct letter, A-G, in boxes 14-17 on your answer.',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
+          _buildPartQ('Which section contains the following information? Write the correct letter, A-G, in boxes 14-17 on your answer.'),
           const SizedBox(height: 10),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'NB You may use any letter more than once',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
+          _buildQ('NB You may use any letter more than once.'),
           const SizedBox(height: 10),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '14  a mention of negative attitudes',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 15),
+          _buildQ('14. a mention of negative attitudes'),
+          const SizedBox(height: 10),
           Container(
-            width: 150, // Đặt chiều rộng cố định cho TextField
-            child: const TextField(
-              decoration: InputDecoration(
-                labelText: 'Answer 14',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                labelStyle: TextStyle(
-                  color: Color(0xFF0067AC),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                ),
-              ),
-            ),
+            width: 150,
+            child: _buildRow('Answer 14'),
           ),
           const SizedBox(height: 10),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '15  figures demonstrating the environmental',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 15),
+          _buildQ('15. figures demonstrating the environmental'),
+          const SizedBox(height: 10),
           Container(
-            width: 150, // Đặt chiều rộng cố định cho TextField
-            child: const TextField(
-              decoration: InputDecoration(
-                labelText: 'Answer 15',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                labelStyle: TextStyle(
-                  color: Color(0xFF0067AC),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                ),
-              ),
-            ),
+            width: 150,
+            child: _buildRow('Answer 15'),
           ),
           const SizedBox(height: 10),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '16  figures demonstrating the environmental',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 15),
+          _buildQ('16. figures demonstrating the environmental'),
+          const SizedBox(height: 10),
           Container(
-            width: 150, // Đặt chiều rộng cố định cho TextField
-            child: const TextField(
-              decoration: InputDecoration(
-                labelText: 'Answer 16',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                labelStyle: TextStyle(
-                  color: Color(0xFF0067AC),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                ),
-              ),
-            ),
+            width: 150,
+            child: _buildRow('Answer 16'),
           ),
           const SizedBox(height: 10),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '17  reference to the disadvantages',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(height: 15),
+          _buildQ('17. reference to the disadvantages'),
+          const SizedBox(height: 10),
           Container(
-            width: 150, // Đặt chiều rộng cố định cho TextField
-            child: const TextField(
-              decoration: InputDecoration(
-                labelText: 'Answer 17',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                labelStyle: TextStyle(
-                  color: Color(0xFF0067AC),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                ),
-              ),
-            ),
+            width: 150,
+            child: _buildRow('Answer 16'),
           ),
           const SizedBox(height: 15),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Choose ONE WORD ONLY from passage Write your answer in boxes 18-21 on your answer.',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
+          _buildPartQ('Choose ONE WORD ONLY from passage Write your answer in boxes 18-21 on your answer.'),
           const SizedBox(height: 10),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'The Roman stadiums of Europe have proved very versatile. The 18_____ of Arles, for example, was converted first into a 19_____, then into a residential.           ',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(4.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Answer 18',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                      labelStyle: TextStyle(
-                        color: Color(0xFF0067AC),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(4.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Answer 19',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                      labelStyle: TextStyle(
-                        color: Color(0xFF0067AC),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          _buildQ('The Roman stadiums of Europe have proved very versatile. The 18_____ of Arles, for example, was converted first into a 19_____, then into a residential.'),
+          _buildRow2('Answer 18', 'Answer 19'),
           const SizedBox(height: 10),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(4.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Answer 20',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                      labelStyle: TextStyle(
-                        color: Color(0xFF0067AC),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(4.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Answer 21',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                      labelStyle: TextStyle(
-                        color: Color(0xFF0067AC),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          _buildRow2('Answer 20', 'Answer 21'),
           const SizedBox(height: 10),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Choose TWO letters, A-E Write the correct letters in boxes 23 and 24 on your answer. When comparing twentieth-century stadiums to ancient..., which TWO negative?',
-              style: TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              Checkbox(
-                value: _isCheckedOption1,
-                onChanged: (bool? value) {
-                  setState(() {
-                    _isCheckedOption1 = value!;
-                  });
-                },
-                fillColor: MaterialStateProperty.resolveWith((states) {
-                  if (states.contains(MaterialState.selected)) {
-                    return Color(0xFF0067AC);
-                  }
-                }),
-              ),
-              Text("They are less imaginatively designed"),
-            ],
-          ),
-          Row(
-            children: [
-              Checkbox(
-                value: _isCheckedOption2,
-                onChanged: (bool? value) {
-                  setState(() {
-                    _isCheckedOption2 = value!;
-                  });
-                },
-                fillColor: MaterialStateProperty.resolveWith((states) {
-                  if (states.contains(MaterialState.selected)) {
-                    return Color(0xFF0067AC);
-                  }
-                }),
-              ),
-              Text("They are less versatile"),
-            ],
-          ),
-          Row(
-            children: [
-              Checkbox(
-                value: _isCheckedOption3,
-                onChanged: (bool? value) {
-                  setState(() {
-                    _isCheckedOption3 = value!;
-                  });
-                },
-                fillColor: MaterialStateProperty.resolveWith((states) {
-                  if (states.contains(MaterialState.selected)) {
-                    return Color(0xFF0067AC);
-                  }
-                }),
-              ),
-              Text("They are less imaginatively designed"),
-            ],
-          ),
-          Row(
-            children: [
-              Checkbox(
-                value: _isCheckedOption4,
-                onChanged: (bool? value) {
-                  setState(() {
-                    _isCheckedOption4 = value!;
-                  });
-                },
-                fillColor: MaterialStateProperty.resolveWith((states) {
-                  if (states.contains(MaterialState.selected)) {
-                    return Color(0xFF0067AC);
-                  }
-                }),
-              ),
-              Text("They are less versatile"),
-            ],
-          ),
+          _buildPartQ('Choose TWO letters, A-E Write the correct letters in boxes 23 and 24 on your answer. When comparing twentieth-century stadiums to ancient..., which TWO negative?'),
+          _buildAnswerCheckbox(_checkOption1, 'They are less versatile', (value) {
+            _checkOption1 = value;
+          }),
+          _buildAnswerCheckbox(_checkOption2, 'They are less imaginatively designed', (value) {
+            _checkOption2 = value;
+          }),
+          _buildAnswerCheckbox(_checkOption3, 'They are less versatile', (value) {
+            _checkOption3 = value;
+          }),
+          _buildAnswerCheckbox(_checkOption4, 'They are less imaginatively designed', (value) {
+            _checkOption4 = value;
+          }),
         ],
       ),
+    );
+  }
+  Widget _buildPart(String numberQuestion, String numberPassage) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: RichText(
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: 'Questions $numberQuestion. Click ',
+              style: const TextStyle(
+                color: Color(0xFF404040),
+                fontSize: 15,
+                fontFamily: 'Jost',
+                fontWeight: FontWeight.w400,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            TextSpan(
+              text: 'here', // Từ "here" có màu đỏ
+              style: const TextStyle(
+                color: Colors.red, // Màu đỏ cho từ "here"
+                fontSize: 15,
+                fontFamily: 'Jost',
+                fontWeight: FontWeight.w400,
+                fontStyle: FontStyle.italic,
+              ),
+              recognizer: TapGestureRecognizer()
+                ..onTap = () {
+                  _showDialog(context, numberPassage, 'Hello'); // Gọi hàm hiển thị dialog khi nhấn vào "here"
+                },
+            ),
+            TextSpan(
+              text: ' to read passage $numberPassage',
+              style: const TextStyle(
+                color: Color(0xFF404040),
+                fontSize: 15,
+                fontFamily: 'Jost',
+                fontWeight: FontWeight.w400,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  void _showDialog(BuildContext context, String numberPassage, String passage) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Passage $numberPassage'),
+          content: Text(
+            passage
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
   Widget _buildSubmitButton() {
@@ -969,59 +314,84 @@ class _ReadingHomeState extends State<ReadingHome> {
       ),
     );
   }
-  Widget _buildPart(String number, String passage) {
-    return Padding(
-      padding: const EdgeInsets.all(1.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 5),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'Questions $number. Click ',
-                    style: TextStyle(
-                      color: Color(0xFF404040),
-                      fontSize: 15,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'here', // Từ "here" có màu đỏ
-                    style: const TextStyle(
-                      color: Colors.red, // Màu đỏ cho từ "here"
-                      fontSize: 15,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.italic,
-                    ),
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () {
-                        _showDialog1(context); // Gọi hàm hiển thị dialog khi nhấn vào "here"
-                      },
-                  ),
-                  TextSpan(
-                    text: ' to read passage $passage',
-                    style: TextStyle(
-                      color: Color(0xFF404040),
-                      fontSize: 15,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-        ],
+  Widget _buildPartQ(String question) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        question,
+        style: const TextStyle(
+          color: Color(0xFF404040),
+          fontSize: 15,
+          fontFamily: 'Jost',
+          fontWeight: FontWeight.w400,
+          fontStyle: FontStyle.italic,
+        ),
       ),
+    );
+  }
+  Widget _buildQ(String question) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        question,
+        style: const TextStyle(
+          color: Color(0xFF404040),
+          fontSize: 15,
+          fontFamily: 'Jost',
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+    );
+  }
+  Widget _buildRow(String label) {
+    return Padding(
+      padding: const EdgeInsets.all(4.0),
+      child: TextField(
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          contentPadding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
+          labelStyle: const TextStyle(
+            color: Color(0xFF0067AC),
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
+          ),
+        ),
+      ),
+    );
+  }
+  Widget _buildRow2(String label1, String label2) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _buildRow(label1), // Gọi hàm _buildRow đúng cách
+        ),
+        Expanded(
+          child: _buildRow(label2), // Gọi hàm _buildRow đúng cách
+        ),
+      ],
+    );
+  }
+  Widget _buildAnswerCheckbox(bool checkOption, String answer, Function(bool) onChanged) {
+    return Row(
+      children: [
+        Checkbox(
+          value: checkOption,
+          onChanged: (bool? value) {
+            setState(() {
+              onChanged(value!);
+            });
+          },
+          fillColor: MaterialStateProperty.resolveWith((states) {
+            if (states.contains(MaterialState.selected)) {
+              return Color(0xFF0067AC);
+            }
+          }),
+        ),
+        Text(answer),
+      ],
     );
   }
 }
