@@ -1,15 +1,17 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
+import'package:auth/presentation/pages/test-page/listening-page.dart';
 class TestCard extends StatelessWidget {
   final String? title;
   final String? description;
+  final String? testType; // Thêm thuộc tính testType
   final VoidCallback? onTap;
 
   const TestCard({
     Key? key,
     this.title,
     this.description,
+    this.testType,  // Khai báo testType trong constructor
     this.onTap,
   }) : super(key: key);
 
@@ -17,6 +19,7 @@ class TestCard extends StatelessWidget {
     return TestCard(
       title: json['title'],
       description: json['description'],
+      testType: json['test_type'], // Kiểm tra lại trường này
     );
   }
 
@@ -102,7 +105,16 @@ class TestCard extends StatelessWidget {
                         ),
                       ),
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          // Kiểm tra testType khi nhấn vào "Làm bài"
+                          if (testType == 'listening') {
+
+                            // Chuyển hướng tới trang ListeningTestPage
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => ListeningTestPage(test: this)));
+                          } else {
+                            debugPrint("testType is NOT listening, testType: $testType");
+                          }
+                        },
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [

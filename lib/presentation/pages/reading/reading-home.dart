@@ -3,6 +3,7 @@ import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/gestures.dart';
+import 'package:auth/presentation/pages/reading/reading-done.dart';
 
 
 class ReadingHome extends StatefulWidget {
@@ -304,9 +305,11 @@ class _ReadingHomeState extends State<ReadingHome> {
           ),
           ElevatedButton(
             onPressed: () {
-              // Handle final submission
               Navigator.pop(context);
-              // Navigate to results page
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => ReadingDone()),
+              );
             },
             child: Text('Submit'),
           ),

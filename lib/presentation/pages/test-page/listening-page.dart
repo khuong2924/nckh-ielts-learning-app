@@ -1,14 +1,11 @@
+import 'package:auth/presentation/model/TestCard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:audioplayers/audioplayers.dart';
-import '../../components/BottomNavBar.dart';
-import '../../components/CustomAppBar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:auth/presentation/model/TestCard.dart'; // Import TestCard
-import 'package:auth/presentation/service/SupabaseService.dart';
 
 class ListeningTestPage extends StatefulWidget {
-  const ListeningTestPage({super.key});
+  const ListeningTestPage({super.key, required TestCard test});
 
   @override
   State<ListeningTestPage> createState() => _ListeningTestPageState();
@@ -20,93 +17,64 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
   bool isPlaying = false;
   Duration duration = Duration.zero;
   Duration position = Duration.zero;
-  final List<TextEditingController> answerControllers =
-  List.generate(10, (index) => TextEditingController());
-  String? selectedAnswer9;
-  String? selectedAnswer10;
+  final Map<int, String?> _selectedAnswers = {}; // Lưu câu trả lời
+  List<dynamic> _questions = [];
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            CustomAppBar(
-              onNotificationTap: () {
-                // Xử lý notification
-              },
-            ),
-            _buildTitle(),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-
-                      _buildInstruction1(),
-                      _buildAudioPlayer(),
-
-                      _buildQuestions1to5(),
-                      _buildQuestions6to8(),
-                      _buildQuestion9(),
-                      _buildQuestion10(),
-                      _buildSubmitButton(),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            BottomNavBar(
-              currentIndex: _currentIndex,
-              onTap: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
-            ),
-          ],
-            ),
-          ),
-        );
-
+  void initState() {
+    super.initState();
+    fetchQuestions();  // Fetch questions from Supabase
+    audioPlayer.onDurationChanged.listen(_onAudioDurationChanged);
+    audioPlayer.onPositionChanged.listen(_onAudioPositionChanged);
   }
 
+  Future<void> fetchQuestions() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('listening_questions')
+          .select('*');
 
+      setState(() {
+        _questions = response as List<dynamic>;
+      });
+    } on PostgrestException catch (e) {
+      print('Error fetching questions: ${e.message}');
+    } catch (e) {
+      print('Unexpected error fetching questions: $e');
+    }
+  }
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(10.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Container(
-            width: 54,
-            height: 49,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/images/logo.png"),
-                fit: BoxFit.fill,
-              ),
-            ),
-          ),
-          Container(
-            width: 48,
-            height: 49,
-            decoration: ShapeDecoration(
-              color: Color(0xFF0067AC),
-              shape: OvalBorder(
-                side: BorderSide(width: 1, color: Color(0xFF773287)),
-              ),
-            ),
-            child: Icon(Icons.person, color: Colors.white),
-          ),
-        ],
-      ),
-    );
+  void _playPauseAudio(String audioUrl) async {
+    if (isPlaying) {
+      await audioPlayer.pause();
+    } else {
+      // Use UrlSource to create a Source object from the URL
+      await audioPlayer.play(UrlSource(audioUrl));
+    }
+
+    setState(() {
+      isPlaying = !isPlaying;
+    });
+  }
+
+  void _onAudioPositionChanged(Duration position) {
+    setState(() {
+      this.position = position;
+    });
+  }
+
+  void _onAudioDurationChanged(Duration duration) {
+    setState(() {
+      this.duration = duration;
+    });
+  }
+
+  String formatTime(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(duration.inHours);
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return [if (duration.inHours > 0) hours, minutes, seconds].join(':');
   }
 
   Widget _buildTitle() {
@@ -121,7 +89,7 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
             },
           ),
           const Text(
-            'Listening',
+            'Listening Test',
             style: TextStyle(
               color: Color(0xFF202244),
               fontSize: 21,
@@ -134,15 +102,7 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
     );
   }
 
-  Widget _buildAudioPlayer() {
-    String formatTime(Duration duration) {
-      String twoDigits(int n) => n.toString().padLeft(2, '0');
-      final hours = twoDigits(duration.inHours);
-      final minutes = twoDigits(duration.inMinutes.remainder(60));
-      final seconds = twoDigits(duration.inSeconds.remainder(60));
-      return [if (duration.inHours > 0) hours, minutes, seconds].join(':');
-    }
-
+  Widget _buildAudioPlayer(String audioUrl) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -160,10 +120,7 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
                   icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
                   color: Colors.white,
                   onPressed: () {
-                    setState(() {
-                      isPlaying = !isPlaying;
-                    });
-                    // Handle audio playback
+                    _playPauseAudio(audioUrl);
                   },
                 ),
               ),
@@ -173,7 +130,7 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
                   max: duration.inSeconds.toDouble(),
                   value: position.inSeconds.toDouble(),
                   onChanged: (value) async {
-                    // Handle seeking
+                    await audioPlayer.seek(Duration(seconds: value.toInt()));
                   },
                 ),
               ),
@@ -194,7 +151,94 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
     );
   }
 
-  // ... Continue with previous widgets (_buildInstructions, _buildQuestions1to5, etc.)
+  Widget _buildInstruction1() {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'To listen now, click the speaker icon:',
+            style: TextStyle(
+              color: Color(0xFFF15327),
+              fontSize: 18,
+              fontFamily: 'Roboto',
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestions() {
+    if (_questions.isEmpty) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: _questions.map((question) {
+          return _buildQuestionWidget(question);
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildQuestionWidget(Map<String, dynamic> question) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            question['question_text'] ?? 'No question text',
+            style: TextStyle(
+              color: Color(0xFF404040),
+              fontSize: 16,
+              fontFamily: 'Roboto',
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...question['choices'].map<Widget>((option) {
+            return _buildOptionItem(option, question['id']);
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionItem(String text, int questionId) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Radio<String>(
+            value: text,
+            groupValue: _selectedAnswers[questionId],
+            onChanged: (value) {
+              setState(() {
+                _selectedAnswers[questionId] = value;
+              });
+            },
+          ),
+          const SizedBox(width: 12),
+          Text(
+            text,
+            style: TextStyle(
+              color: Color(0xFF404040),
+              fontSize: 16,
+              fontFamily: 'Roboto',
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildSubmitButton() {
     return Container(
@@ -202,7 +246,6 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
       padding: const EdgeInsets.all(20),
       child: ElevatedButton(
         onPressed: () {
-          // Handle submit
           _showSubmitDialog();
         },
         style: ElevatedButton.styleFrom(
@@ -237,9 +280,8 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              // Handle final submission
               Navigator.pop(context);
-              // Navigate to results page
+              _submitAnswers();
             },
             child: Text('Submit'),
           ),
@@ -248,269 +290,44 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
     );
   }
 
-  Widget _buildInstruction1() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'To listen now, click the speaker icon:',
-            style: TextStyle(
-              color: Color(0xFFF15327),
-              fontSize: 18,
-              fontFamily: 'Roboto',
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInstruction2() {
-    return Padding(
-      padding: const EdgeInsets.all(1.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 5),
-          Text(
-            'Complete the information below, write no more than one word or a number for each answer.',
-            style: TextStyle(
-              color: Color(0xFF404040),
-              fontSize: 14,
-              fontFamily: 'Roboto',
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(height: 10),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestions1to5() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Question 1 - 5'),
-          _buildInstruction2(),
-          _buildInfoTable(),
-          const SizedBox(height: 10),
-          ...List.generate(5, (index) => _buildAnswerField(index + 1)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnswerField(int questionNumber) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-      child: TextField(
-        controller: answerControllers[questionNumber - 1],
-        decoration: InputDecoration(
-          labelText: 'Answer $questionNumber',
-          border: const OutlineInputBorder(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoTable() {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black),
-      ),
-      child: Table(
-        border: TableBorder.all(),
-        children: [
-          TableRow(
-            children: [
-              _buildTableCell('Street'),
-              _buildTableCell('Bridge Street'),
-            ],
-          ),
-          TableRow(
-            children: [
-              _buildTableCell('Owner'),
-              _buildTableCell('(1)... Smith'),
-            ],
-          ),
-          TableRow(
-            children: [
-              _buildTableCell('(2)...'),
-              _buildTableCell('0912476321'),
-            ],
-          ),
-          TableRow(
-            children: [
-              _buildTableCell('Included'),
-              _buildTableCell('(3)..., heat,(4)...'),
-            ],
-          ),
-          TableRow(
-            children: [
-              _buildTableCell('Near'),
-              _buildTableCell('Central HighSchool and (5)...'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTableCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: Color(0xFF404040),
-          fontSize: 16,
-          fontFamily: 'Roboto',
-          fontWeight: FontWeight.w400,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuestions6to8() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Question 6 - 8'),
-          _buildQuestion(
-            'What did the citizens around there think that should be enhance?',
-            [
-              'public transportation in overall',
-              'the living standards',
-              'noise pollution',
-              'heat',
-              'the lack of entertainment activities',
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestion9() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Question 9'),
-          _buildQuestion(
-            'What did Anderson think about her surroundings?',
-            [
-              'peaceful',
-              'she hate living here',
-              'abcdefgh',
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestion10() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Question 10'),
-          _buildQuestion(
-            'What did Anderson think about her surroundings?',
-            [
-              'peaceful',
-              'she hate living here',
-              'abcdefgh',
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1.0),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: Color(0xFF1D1B20),
-          fontSize: 22,
-          fontFamily: 'Roboto',
-          fontWeight: FontWeight.w400,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuestion(String question, List<String> options) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          question,
-          style: TextStyle(
-            color: Color(0xFF404040),
-            fontSize: 16,
-            fontFamily: 'Roboto',
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...options.map((option) => _buildOptionItem(option)).toList(),
-      ],
-    );
-  }
-
-  Widget _buildOptionItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            child: Radio(
-              value: text,
-              groupValue: null,
-              onChanged: (value) {
-                // Handle radio selection
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            text,
-            style: TextStyle(
-              color: Color(0xFF404040),
-              fontSize: 16,
-              fontFamily: 'Roboto',
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ],
-      ),
-    );
+  void _submitAnswers() {
+    // Gửi câu trả lời lên Supabase hoặc xử lý điểm số ở đây
+    print(_selectedAnswers);
   }
 
   @override
   void dispose() {
     audioPlayer.dispose();
-    for (var controller in answerControllers) {
-      controller.dispose();
-    }
     super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildTitle(),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildInstruction1(),
+                      _buildAudioPlayer("https://ojjtdegibiythbrqhdkg.supabase.co/storage/v1/object/public/NCKH/Track-1.mp3?t=2025-01-17T19%3A47%3A34.967Z"),
+                      _buildQuestions(),
+                      _buildSubmitButton(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

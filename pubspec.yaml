@@ -63,3 +63,4 @@ flutter:
     - lib/icons/ic-circle.svg
     - lib/icons/ic-graph.svg
     - lib/icons/ic-homecard.png
+    - lib/icons/ic-close.svg
