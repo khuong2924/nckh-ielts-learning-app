@@ -1,25 +1,26 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import'package:auth/presentation/pages/test-page/listening-page.dart';
+import 'package:auth/presentation/pages/test-page/listening-page.dart';
+
 class TestCard extends StatelessWidget {
   final String? title;
-  final String? description;
   final String? testType; // Thêm thuộc tính testType
+  final int? testId; // Thêm thuộc tính testId
   final VoidCallback? onTap;
 
   const TestCard({
     Key? key,
     this.title,
-    this.description,
-    this.testType,  // Khai báo testType trong constructor
+    this.testType,
+    this.testId,  // Khai báo testId trong constructor
     this.onTap,
   }) : super(key: key);
 
   factory TestCard.fromJson(Map<String, dynamic> json) {
     return TestCard(
-      title: json['title'],
-      description: json['description'],
-      testType: json['test_type'], // Kiểm tra lại trường này
+      title: json['test_name'],
+      testType: json['test_type'],
+      testId: json['id'], // Kiểm tra lại trường này
     );
   }
 
@@ -88,7 +89,7 @@ class TestCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      description ?? '',
+                      title ?? '',
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.grey,
@@ -108,9 +109,13 @@ class TestCard extends StatelessWidget {
                         onPressed: () {
                           // Kiểm tra testType khi nhấn vào "Làm bài"
                           if (testType == 'listening') {
-
-                            // Chuyển hướng tới trang ListeningTestPage
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => ListeningTestPage(test: this)));
+                            // Chuyển hướng tới trang ListeningTestPage với testId
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ListeningTestPage(testId: testId!),
+                              ),
+                            );
                           } else {
                             debugPrint("testType is NOT listening, testType: $testType");
                           }

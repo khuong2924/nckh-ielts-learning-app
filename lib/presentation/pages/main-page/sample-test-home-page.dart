@@ -108,7 +108,7 @@ class _HomePageState extends State<HomePage> {
         _filteredTests = _tests
             .where((test) =>
         (test.title?.toLowerCase().contains(query.toLowerCase()) == true ||
-            test.description?.toLowerCase().contains(query.toLowerCase()) ==
+            test.title?.toLowerCase().contains(query.toLowerCase()) ==
                 true))
             .toList();
       }

@@ -10,7 +10,7 @@ import '../../../../main.dart';
 import '../../components/ForgetPass.dart';
 import '../../components/HeaderImage.dart';
 import '../../components/SocialLoginButtons.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:auth/presentation/pages/main-page/home-page.dart';
 import 'package:auth/presentation/pages/account-management/signup.dart';
 class SigninPage extends StatefulWidget {
@@ -150,6 +150,11 @@ class _SigninPageState extends State<SigninPage> {
 
               // Nếu đăng nhập thành công, cập nhật trạng thái của ButtonStateCubit
               context.read<ButtonStateCubit>().emit(ButtonSuccessState());
+              // Lưu userId vào SharedPreferences
+              // Lấy userId từ Firebase
+              String userId = userCredential.user?.uid ?? '';
+              SharedPreferences prefs = await SharedPreferences.getInstance();
+              await prefs.setString('user_id', userId);
             } on FirebaseAuthException catch (e) {
               String errorMessage = 'An error occurred';
               if (e.code == 'user-not-found') {
