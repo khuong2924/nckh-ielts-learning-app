@@ -150,11 +150,15 @@ class _SigninPageState extends State<SigninPage> {
 
               // Nếu đăng nhập thành công, cập nhật trạng thái của ButtonStateCubit
               context.read<ButtonStateCubit>().emit(ButtonSuccessState());
+
               // Lưu userId vào SharedPreferences
-              // Lấy userId từ Firebase
               String userId = userCredential.user?.uid ?? '';
               SharedPreferences prefs = await SharedPreferences.getInstance();
               await prefs.setString('user_id', userId);
+              // Hiển thị thông báo với userId
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('User ID: $userId')),
+              );
             } on FirebaseAuthException catch (e) {
               String errorMessage = 'An error occurred';
               if (e.code == 'user-not-found') {
