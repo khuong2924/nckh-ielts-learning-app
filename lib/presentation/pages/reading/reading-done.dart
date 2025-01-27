@@ -317,11 +317,6 @@ class _ReadingDoneState extends State<ReadingDone> {
       children: [
         ElevatedButton(
           onPressed: () {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => ReadingHome()),
-                  (Route<dynamic> route) => false,
-            );
 
           },
           style: ElevatedButton.styleFrom(

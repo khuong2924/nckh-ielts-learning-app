@@ -1,3 +1,4 @@
+import 'package:auth/presentation/pages/reading/reading-home.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:auth/presentation/pages/test-page/listening-page.dart';
@@ -116,7 +117,15 @@ class TestCard extends StatelessWidget {
                                 builder: (context) => ListeningTestPage(testId: testId!),
                               ),
                             );
-                          } else {
+                          } else if(testType == 'reading') {
+                            //
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ReadingHome(testId: testId!),
+                              ),
+                            );
+                          }else{
                             debugPrint("testType is NOT listening, testType: $testType");
                           }
                         },
