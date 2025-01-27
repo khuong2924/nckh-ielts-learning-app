@@ -46,33 +46,6 @@ class SupabaseService {
     }
   }
 
-  /// Lưu đáp án của người dùng
-  Future<void> saveUserAnswers(int testId, Map<int, String?> answers) async {
-    // Lấy user_id từ Firebase Authentication
-    final firebase_auth.User? currentUser =
-        firebase_auth.FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      throw Exception('No user logged in.');
-    }
-    final String userId = currentUser.uid;
-
-    // Chuyển đổi `answers` thành một danh sách để lưu vào cơ sở dữ liệu
-    final List<Map<String, dynamic>> answerList = answers.entries.map((entry) {
-      return {
-        'user_id': userId, // Thêm user_id vào từng câu trả lời
-        'question_id': entry.key,
-        'user_answer': entry.value,
-        'test_id': testId,
-      };
-    }).toList();
-
-    // Gửi dữ liệu lên Supabase
-    final response = await supabase.from('user_answers').insert(answerList);
-
-    if (response.error != null) {
-      throw Exception('Failed to save answers: ${response.error!.message}');
-    }
-  }
 
   /// Lấy danh sách câu hỏi theo `part_id`
   Future<List<Map<String, dynamic>>> fetchQuestionsByPartId(int partId) async {

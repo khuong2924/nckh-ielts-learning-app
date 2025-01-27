@@ -1,9 +1,8 @@
-import 'package:auth/presentation/components/FillInTheBlank.dart';
-import 'package:auth/presentation/components/MultipleChoice.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:auth/presentation/service/SupabaseService.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:auth/presentation/components/FillInTheBlank.dart'; // Nếu bạn đã tạo component này
 
 class ListeningTestPage extends StatefulWidget {
   final int testId;
@@ -15,123 +14,73 @@ class ListeningTestPage extends StatefulWidget {
 }
 
 class _ListeningTestPageState extends State<ListeningTestPage> {
-  final SupabaseService _supabaseService = SupabaseService();
+  late Future<List<Map<String, dynamic>>> partsData;
   final AudioPlayer _audioPlayer = AudioPlayer();
-
-  List<Map<String, dynamic>> _parts = [];
-  Map<int, List<Map<String, dynamic>>> _questionsByPart = {};
-  Map<int, String?> _selectedAnswers = {};
-  int? _currentPlayingPartId;
-  bool _isAudioPlaying = false;
+  late String userId;
+  Map<int, List<Map<String, dynamic>>> selectedAnswers = {}; // Lưu câu trả lời cho từng phần
 
   @override
   void initState() {
     super.initState();
-    _fetchPartsAndQuestions();
+    _loadUserId();  // Load the userId from SharedPreferences
+    partsData = fetchListeningParts(widget.testId);
   }
 
-  Future<void> _fetchPartsAndQuestions() async {
-    try {
-      final parts = await _supabaseService.fetchPartsByTestId(widget.testId);
-      setState(() {
-        _parts = parts;
-      });
-
-      for (var part in parts) {
-        final partId = part['id'];
-        final questions = await _supabaseService.fetchQuestionsByPartId(partId);
-        setState(() {
-          _questionsByPart[partId] = questions;
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching test data: ${e.toString()}')),
-      );
-    }
-  }
-
-  void _playPauseAudio(int partId, String audioUrl) async {
-    if (_currentPlayingPartId == partId && _isAudioPlaying) {
-      await _audioPlayer.pause();
-    } else {
-      if (_currentPlayingPartId != null) {
-        await _audioPlayer.stop();
-      }
-      await _audioPlayer.play(UrlSource(audioUrl));
-      setState(() {
-        _currentPlayingPartId = partId;
-      });
-    }
-
+  Future<void> _loadUserId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      _isAudioPlaying = !_isAudioPlaying;
+      userId = prefs.getString('userId') ?? '';  // Retrieve the userId from SharedPreferences
     });
   }
 
-  Widget _buildQuestionWidget(Map<String, dynamic> question) {
-    final questionType = question['question_type'];
-    final questionId = question['id'];
-    final questionText = question['question_text'];
+  Future<List<Map<String, dynamic>>> fetchListeningParts(int testId) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('listening_parts')
+          .select()
+          .eq('test_id', testId)
+          .order('id', ascending: true);
 
-    if (questionType == 'multiple_choice') {
-      return MultipleChoiceQuestion(
-        questionText: questionText,
-        choices: List<String>.from(question['choices']),
-        onAnswerSelected: (answer) {
-          setState(() {
-            _selectedAnswers[questionId] = answer;
-          });
-        },
-        selectedAnswer: _selectedAnswers[questionId],
+      return List<Map<String, dynamic>>.from(response as List);
+    } on PostgrestException catch (e) {
+      throw Exception('Error fetching parts: ${e.message}');
+    } catch (e) {
+      throw Exception('Unexpected error fetching parts: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchAnswers(int partId) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('answers')
+          .select()
+          .eq('part_id', partId)
+          .order('question_number', ascending: true);
+
+      return List<Map<String, dynamic>>.from(response as List);
+    } on PostgrestException catch (e) {
+      throw Exception('Error fetching answers for part: ${e.message}');
+    } catch (e) {
+      throw Exception('Unexpected error fetching answers: $e');
+    }
+  }
+
+  Future<void> _submitAnswers(Map<int, List<Map<String, dynamic>>> selectedAnswers) async {
+    if (selectedAnswers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please answer all questions before submitting.')),
       );
-    } else if (questionType == 'fill_in_the_blank') {
-      return FillInTheBlankQuestion(
-        questionText: questionText,
-        onAnswerSubmitted: (answer) {
-          setState(() {
-            _selectedAnswers[questionId] = answer;
-          });
-        },
-      );
+      return;
     }
 
-    return Container(); // Placeholder for unsupported question types
-  }
-
-  Widget _buildPartWidget(Map<String, dynamic> part) {
-    final partId = part['id'];
-    final questions = _questionsByPart[partId] ?? [];
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              part['part_title'] ?? 'Part Title',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton.icon(
-              onPressed: () => _playPauseAudio(partId, part['audio_url']),
-              icon: Icon(_currentPlayingPartId == partId && _isAudioPlaying
-                  ? Icons.pause
-                  : Icons.play_arrow),
-              label: Text('Listen'),
-            ),
-            ...questions.map(_buildQuestionWidget).toList(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _submitAnswers() async {
     try {
-      await _supabaseService.saveUserAnswers(widget.testId, _selectedAnswers);
+      final response = await Supabase.instance.client
+          .from('user_answers')
+          .upsert(selectedAnswers.values.expand((x) => x).toList());
+      if (response.error != null) {
+        throw response.error!;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Your answers have been submitted!')),
       );
@@ -144,32 +93,175 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
   }
 
   @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Listening Test'),
-        backgroundColor: Colors.blueAccent,
-      ),
-      body: _parts.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-        padding: const EdgeInsets.all(10),
-        itemCount: _parts.length,
-        itemBuilder: (context, index) {
-          return _buildPartWidget(_parts[index]);
+      appBar: AppBar(title: Text('Listening Test')),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: partsData,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('No parts available'));
+          }
+
+          final parts = snapshot.data!;
+
+          return ListView.builder(
+            itemCount: parts.length,
+            itemBuilder: (context, index) {
+              final part = parts[index];
+              return PartWidget(
+                part: part,
+                fetchAnswers: fetchAnswers,
+                audioPlayer: _audioPlayer,
+                userId: userId,
+                selectedAnswers: selectedAnswers,
+                onAnswerSubmitted: (partId, answer) {
+                  setState(() {
+                    if (!selectedAnswers.containsKey(partId)) {
+                      selectedAnswers[partId] = [];
+                    }
+                    selectedAnswers[partId]!.add(answer);
+                  });
+                },
+              );
+            },
+          );
         },
       ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(10),
         child: ElevatedButton(
-          onPressed: _submitAnswers,
+          onPressed: () {
+            _submitAnswers(selectedAnswers);
+          },
           child: const Text('Submit Answers'),
+        ),
+      ),
+    );
+  }
+}
+
+class PartWidget extends StatefulWidget {
+  final Map<String, dynamic> part;
+  final Future<List<Map<String, dynamic>>> Function(int) fetchAnswers;
+  final AudioPlayer audioPlayer;
+  final String userId;
+  final Map<int, List<Map<String, dynamic>>> selectedAnswers;
+  final Function(int, Map<String, dynamic>) onAnswerSubmitted;
+
+  PartWidget({
+    required this.part,
+    required this.fetchAnswers,
+    required this.audioPlayer,
+    required this.userId,
+    required this.selectedAnswers,
+    required this.onAnswerSubmitted,
+  });
+
+  @override
+  _PartWidgetState createState() => _PartWidgetState();
+}
+
+class _PartWidgetState extends State<PartWidget> {
+  late Future<List<Map<String, dynamic>>> answersData;
+  bool _hasPlayed = false;
+  Map<int, String> userAnswers = {}; // Store user answers locally
+
+  @override
+  void initState() {
+    super.initState();
+    answersData = widget.fetchAnswers(widget.part['id']);
+  }
+
+  void _playAudio() async {
+    if (widget.part['audio_url'] != null && widget.part['audio_url'].isNotEmpty && !_hasPlayed) {
+      await widget.audioPlayer.play(widget.part['audio_url']);
+      setState(() {
+        _hasPlayed = true; // Mark that the audio has played
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.all(10),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.part['part_title'],
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 10),
+            Text(widget.part['part_description'] ?? 'No description'),
+            SizedBox(height: 10),
+            widget.part['audio_url'] != null
+                ? IconButton(
+              icon: Icon(
+                Icons.play_arrow,
+                color: Colors.green,
+              ),
+              onPressed: _playAudio,
+            )
+                : Container(),
+            SizedBox(height: 10),
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: answersData,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return CircularProgressIndicator();
+                }
+
+                if (snapshot.hasError) {
+                  return Text('Error loading answers: ${snapshot.error}');
+                }
+
+                final answers = snapshot.data!;
+                return Column(
+                  children: List.generate(answers.length, (index) {
+                    final answer = answers[index];
+                    String initialAnswer = widget.selectedAnswers[widget.part['id']]
+                        ?.firstWhere(
+                          (item) => item['question_number'] == answer['question_number'],
+                      orElse: () => {'user_answer': ''},
+                    )['user_answer'] ??
+                        '';
+
+                    return FillInTheBlankQuestion(
+                      questionText: 'Question ${answer['question_number']}',
+                      initialAnswer: userAnswers[answer['question_number']] ?? initialAnswer,
+                      onAnswerSubmitted: (userAnswer) {
+                        setState(() {
+                          userAnswers[answer['question_number']] = userAnswer!; // Update local state
+                        });
+                        widget.onAnswerSubmitted(
+                          widget.part['id'],
+                          {
+                            'user_id': widget.userId,
+                            'part_id': widget.part['id'],
+                            'question_number': answer['question_number'],
+                            'user_answer': userAnswer,
+                            'is_correct': false, // Placeholder logic for answer validation
+                          },
+                        );
+                      },
+                    );
+                  }),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );

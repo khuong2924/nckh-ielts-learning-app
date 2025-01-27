@@ -6,34 +6,33 @@ class FillInTheBlankQuestion extends StatelessWidget {
 
   FillInTheBlankQuestion({
     required this.questionText,
-    required this.onAnswerSubmitted,
+    required this.onAnswerSubmitted, required initialAnswer,
   });
 
   @override
   Widget build(BuildContext context) {
     final TextEditingController controller = TextEditingController();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          questionText,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        SizedBox(height: 10),
-        TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'Enter your answer',
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            questionText,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
-          onSubmitted: (value) {
-            if (onAnswerSubmitted != null) {
-              onAnswerSubmitted(value); // Callback to parent
-            }
-          },
-        ),
-      ],
+          const SizedBox(height: 10),
+          TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              hintText: 'Enter your answer',
+            ),
+            onSubmitted: (value) => onAnswerSubmitted(value),
+          ),
+        ],
+      ),
     );
   }
 }
