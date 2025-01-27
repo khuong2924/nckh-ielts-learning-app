@@ -5,6 +5,7 @@ import 'firebase_options.dart'; // File được tạo bởi Firebase CLI
 import 'package:auth/presentation/pages/account-management/signin.dart';
 import 'package:auth/presentation/pages/reading/reading-done.dart';
 import 'package:auth/presentation/pages/main-page/sample-test-home-page.dart';
+import 'package:auth/presentation/pages/flashcard/flashcard-home.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase package
 
 Future<void> main() async {
@@ -35,7 +36,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: const ReadingHome(), // Để lại SigninPage như cũ
+      home: const FlashcardHome(), // Để lại SigninPage như cũ
     );
   }
 }
