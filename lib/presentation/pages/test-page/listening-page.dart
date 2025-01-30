@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:auth/presentation/pages/reading/reading-done.dart';
 import 'package:auth/presentation/components/FillInTheBlank.dart';
 
 class ListeningTestPage extends StatefulWidget {
@@ -18,13 +20,25 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
   late String userId;
   List<Map<String, dynamic>> parts = [];
   Map<int, List<Map<String, dynamic>>> partAnswers = {};
-  Map<int, Map<int, String>> userAnswers = {}; // User's answers
+  Map<int, Map<int, String>> userAnswers = {};
+  Map<int, int> correctAnswersPerPart = {};
   bool isLoading = true;
+  int elapsedTime = 0;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        elapsedTime++;
+      });
+    });
   }
 
   Future<void> _loadData() async {
@@ -48,7 +62,7 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
             .order('question_number', ascending: true);
 
         partAnswers[part['id']] = List<Map<String, dynamic>>.from(answersResponse as List);
-        userAnswers[part['id']] ??= {}; // Initialize user answers for each part
+        userAnswers[part['id']] ??= {};
       }
 
       setState(() {
@@ -63,12 +77,13 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
   }
 
   double _calculateIELTSScore(int correctAnswers, int totalQuestions) {
-    if (totalQuestions == 0) return 0.0; // Tránh chia cho 0
-    double score = (correctAnswers / totalQuestions) * 9; // Tính thang điểm 9
-    return score.clamp(0, 9); // Đảm bảo điểm nằm trong khoảng 0-9
+    if (totalQuestions == 0) return 0.0;
+    double score = (correctAnswers / totalQuestions) * 9;
+    return score.clamp(0, 9);
   }
 
   Future<void> _submitAnswers() async {
+    // Kiểm tra xem người dùng đã trả lời đủ câu hỏi chưa
     if (userAnswers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please answer all questions before submitting.')),
@@ -77,19 +92,19 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
     }
 
     try {
-      int correctAnswers = 0;
+      int totalCorrect = 0;
       int totalQuestions = 0;
+      Map<int, int> correctCountByPart = {};
 
-      // Iterate through each part and compare user answers with correct answers
       for (var entry in userAnswers.entries) {
-        final partId = entry.key; // ID của phần
-        final partUserAnswers = entry.value; // Đáp án của người dùng cho phần này
+        final partId = entry.key;
+        final partUserAnswers = entry.value;
+        int correctCount = 0;
 
         for (var questionEntry in partUserAnswers.entries) {
-          final questionNumber = questionEntry.key; // Số thứ tự câu hỏi
-          final userAnswer = questionEntry.value.trim().toLowerCase(); // Đáp án người dùng
+          final questionNumber = questionEntry.key;
+          final userAnswer = questionEntry.value.trim().toLowerCase();
 
-          // Tìm đáp án đúng từ partAnswers
           final correctAnswer = partAnswers[partId]?.firstWhere(
                   (answer) => answer['question_number'] == questionNumber,
               orElse: () => {'correct_answer': null})['correct_answer']?.toString().toLowerCase();
@@ -97,48 +112,68 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
           if (correctAnswer != null) {
             totalQuestions++;
             if (userAnswer == correctAnswer) {
-              correctAnswers++;
+              correctCount++;
+              totalCorrect++;
             }
+
+            // Lưu câu trả lời của người dùng vào bảng user_answers
+            await Supabase.instance.client.from('user_answers').insert({
+              'user_id': userId,
+              'part_id': partId,
+              'question_number': questionNumber,
+              'user_answer': userAnswer,
+              'is_correct': userAnswer == correctAnswer,
+            });
           }
         }
+        correctCountByPart[partId] = correctCount;
       }
 
-      // Tính điểm IELTS
-      final score = _calculateIELTSScore(correctAnswers, totalQuestions);
+      setState(() {
+        correctAnswersPerPart = correctCountByPart;
+      });
 
-      // Prepare answers for submission
-      final List<Map<String, dynamic>> answersToSubmit = userAnswers.entries
-          .expand((entry) => entry.value.entries.map((answerEntry) {
-        final questionNumber = answerEntry.key;
-        final userAnswer = answerEntry.value;
-        final correctAnswer = partAnswers[entry.key]?.firstWhere(
-                (answer) => answer['question_number'] == questionNumber)['correct_answer'];
+      final score = _calculateIELTSScore(totalCorrect, totalQuestions);
 
-        return {
-          'user_id': userId,
-          'part_id': entry.key,
-          'question_number': questionNumber,
-          'user_answer': userAnswer,
-          'is_correct': userAnswer.trim().toLowerCase() == correctAnswer?.toString().toLowerCase(),
-        };
-      }))
-          .toList();
-
-      // Save answers to database
-      await Supabase.instance.client.from('user_answers').upsert(answersToSubmit);
-
-      // Save test results to database
+      // Lưu kết quả bài kiểm tra vào bảng test_results
       await Supabase.instance.client.from('test_results').insert({
         'user_id': userId,
         'test_id': widget.testId,
-        'score': score,
+        'score': score.toInt(),
         'total_questions': totalQuestions,
+        'time': elapsedTime,
+        'part1': correctCountByPart[1]?.toString() ?? '0',
+        'part2': correctCountByPart[2]?.toString() ?? '0',
+        'part3': correctCountByPart[3]?.toString() ?? '0',
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Test submitted! Your IELTS score is ${score.toStringAsFixed(2)}.')),
       );
-      Navigator.pop(context);
+
+      _timer?.cancel();
+
+      // Chuyển đến trang kết quả
+      Map<int, String> flattenedUserAnswers = {};
+      userAnswers.forEach((partId, answers) {
+        answers.forEach((questionNumber, answer) {
+          flattenedUserAnswers[questionNumber] = answer;
+        });
+      });
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReadingDone(
+            score: score,
+            timeTaken: elapsedTime,
+            correctAnswersPerPart: correctCountByPart,
+            userAnswers: flattenedUserAnswers,
+            parts: parts,
+            partAnswers: partAnswers,
+          ),
+        ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to submit answers: ${e.toString()}')),
@@ -146,31 +181,54 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
     }
   }
 
+  String _formatTime(int seconds) {
+    final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$secs';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Listening Test')),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-        itemCount: parts.length,
-        itemBuilder: (context, index) {
-          final part = parts[index];
-          final answers = partAnswers[part['id']] ?? [];
+      body: Stack(
+        children: [
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : ListView.builder(
+            itemCount: parts.length,
+            itemBuilder: (context, index) {
+              final part = parts[index];
+              final answers = partAnswers[part['id']] ?? [];
+              final correctCount = correctAnswersPerPart[part['id']] ?? 0;
 
-          return PartWidget(
-            part: part,
-            answers: answers,
-            audioPlayer: _audioPlayer,
-            userAnswers: userAnswers[part['id']] ?? {},
-            onAnswerChanged: (questionNumber, answer) {
-              setState(() {
-                userAnswers[part['id']] ??= {};
-                userAnswers[part['id']]![questionNumber] = answer;
-              });
+              return Column(
+                children: [
+                  PartWidget(
+                    part: part,
+                    answers: answers,
+                    audioPlayer: _audioPlayer,
+                    userAnswers: userAnswers[part['id']] ?? {},
+                    onAnswerChanged: (questionNumber, answer) {
+                      setState(() {
+                        userAnswers[part['id']] ??= {};
+                        userAnswers[part['id']]![questionNumber] = answer;
+                      });
+                    },
+                  ),
+                ],
+              );
             },
-          );
-        },
+          ),
+          Positioned(
+            top: 10,
+            right: 10,
+            child: Chip(
+              label: Text('Time: ${_formatTime(elapsedTime)}', style: TextStyle(fontSize: 16)),
+              backgroundColor: Colors.blueAccent,
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(10),
@@ -219,7 +277,13 @@ class PartWidget extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.play_arrow, color: Colors.green),
                 onPressed: () async {
-                  await audioPlayer.play(part['audio_url']);
+                  try {
+                    await audioPlayer.play(UrlSource(part['audio_url'])); // Sử dụng UrlSource
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error playing audio: $e')),
+                    );
+                  }
                 },
               ),
             const SizedBox(height: 10),

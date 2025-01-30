@@ -155,10 +155,7 @@ class _SigninPageState extends State<SigninPage> {
               String userId = userCredential.user?.uid ?? '';
               SharedPreferences prefs = await SharedPreferences.getInstance();
               await prefs.setString('user_id', userId);
-              // Hiển thị thông báo với userId
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('User ID: $userId')),
-              );
+
             } on FirebaseAuthException catch (e) {
               String errorMessage = 'An error occurred';
               if (e.code == 'user-not-found') {
