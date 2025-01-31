@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 class ViewAnswersPage extends StatelessWidget {
   final List<Map<String, dynamic>> parts; // List of parts (questions)
   final Map<int, String> userAnswers; // User's answers
@@ -13,6 +14,11 @@ class ViewAnswersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Debug print the received data
+    debugPrint("Received parts: $parts");
+    debugPrint("Received userAnswers: $userAnswers");
+    debugPrint("Received partAnswers: $partAnswers");
+
     return Scaffold(
       appBar: AppBar(title: const Text('View Answers')),
       body: ListView.builder(

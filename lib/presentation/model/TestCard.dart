@@ -40,31 +40,40 @@ class TestCard extends StatelessWidget {
 
     final userAnswers = <int, String>{};
     for (var item in response) {
+      if (item['question_number'] == null || item['user_answer'] == null) {
+        debugPrint("Lỗi dữ liệu user_answers: $item");
+        continue;
+      }
       userAnswers[item['question_number']] = item['user_answer'];
     }
 
+    debugPrint("Dữ liệu userAnswers: $userAnswers");
     return userAnswers;
   }
 
-  Future<Map<int, List<Map<String, dynamic>>>> _getPartAnswers(int partId) async {
+  Future<List<Map<String, dynamic>>> _getPartAnswers(int partId) async {
     final response = await Supabase.instance.client
         .from('answers')
-        .select('question_number, correct_answer')
+        .select('id, part_id, question_number, correct_answer')
         .eq('part_id', partId);
 
-    final partAnswers = <int, List<Map<String, dynamic>>>{};
+    final partAnswers = <Map<String, dynamic>>[];
 
     for (var item in response) {
-      final questionNumber = item['question_number'];
-      final correctAnswer = item['correct_answer'];
-
-      // Tạo danh sách câu trả lời cho từng câu hỏi
-      if (!partAnswers.containsKey(questionNumber)) {
-        partAnswers[questionNumber] = [];
+      if (item['id'] == null || item['question_number'] == null || item['correct_answer'] == null) {
+        debugPrint("Lỗi dữ liệu: $item");
+        continue;
       }
-      partAnswers[questionNumber]!.add({'correct_answer': correctAnswer});
+
+      partAnswers.add({
+        'id': item['id'],
+        'part_id': item['part_id'],
+        'question_number': item['question_number'],
+        'correct_answer': item['correct_answer'],
+      });
     }
 
+    debugPrint("Dữ liệu partAnswers: $partAnswers");
     return partAnswers;
   }
 
@@ -89,6 +98,44 @@ class TestCard extends StatelessWidget {
         .eq('test_id', testId);
 
     return response;
+  }
+
+  Future<void> _navigateToViewAnswers(BuildContext context) async {
+    final userId = await _getUserId();
+    final parts = await _getParts(testId!);
+
+    if (userId == null || parts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không tìm thấy dữ liệu')),
+      );
+      return;
+    }
+
+    final userAnswers = <int, String>{};
+    final partAnswers = <int, List<Map<String, dynamic>>>{};
+
+    // Lấy dữ liệu cho tất cả các phần
+    for (var part in parts) {
+      final userAnswerMap = await _getUserAnswers(userId, part['id']);
+      final partAnswerList = await _getPartAnswers(part['id']);
+
+      userAnswers.addAll(userAnswerMap);
+      partAnswers[part['id']] = partAnswerList;
+    }
+
+    debugPrint("Final userAnswers: $userAnswers");
+    debugPrint("Final partAnswers: $partAnswers");
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ViewAnswersPage(
+          parts: parts,
+          userAnswers: userAnswers, // Đảm bảo rằng kiểu dữ liệu là Map<int, String>
+          partAnswers: partAnswers, // Đảm bảo rằng kiểu dữ liệu là Map<int, List<Map<String, dynamic>>>
+        ),
+      ),
+    );
   }
 
   @override
@@ -225,34 +272,7 @@ class TestCard extends StatelessWidget {
                                   ),
                                 ),
                                 child: TextButton(
-                                  onPressed: () async {
-                                    final userId = await _getUserId();
-                                    final parts = await _getParts(testId!);
-
-                                    // Chỉ lấy một phần để hiển thị
-                                    final part = parts.isNotEmpty ? parts[0] : null;
-                                    if (part != null) {
-                                      final userAnswers = await _getUserAnswers(userId!, part['id']);
-                                      final partAnswers = await _getPartAnswers(part['id']);
-
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('User asnwer: $userAnswers')),
-                                      );
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('id: $userId')),
-                                      );
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ViewAnswersPage(
-                                            parts: parts,
-                                            userAnswers: userAnswers,
-                                            partAnswers: partAnswers,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
+                                  onPressed: () => _navigateToViewAnswers(context),
                                   child: const Text(
                                     'View Answers',
                                     style: TextStyle(
