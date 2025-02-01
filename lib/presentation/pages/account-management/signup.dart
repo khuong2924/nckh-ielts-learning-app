@@ -7,6 +7,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Thêm import cho Supabase
 import '../../components/HeaderImage.dart';
 import '../main-page/home-page.dart';
 
@@ -110,7 +111,7 @@ class _SignupPageState extends State<SignupPage> {
   Widget _password() {
     return TextField(
       controller: _passwordCon,
-      obscureText: _obscurePassword, // Sử dụng biến để điều khiển hiển thị mật khẩu
+      obscureText: _obscurePassword,
       decoration: InputDecoration(
         hintText: 'Password',
         suffixIcon: IconButton(
@@ -119,7 +120,7 @@ class _SignupPageState extends State<SignupPage> {
           ),
           onPressed: () {
             setState(() {
-              _obscurePassword = !_obscurePassword; // Đảo ngược trạng thái khi nhấn nút
+              _obscurePassword = !_obscurePassword;
             });
           },
         ),
@@ -133,7 +134,7 @@ class _SignupPageState extends State<SignupPage> {
         return BasicAppButton(
           title: 'Create Account',
           onPressed: () async {
-            String username = _usernameCon.text.trim(); // Get username
+            String username = _usernameCon.text.trim();
             String email = _emailCon.text.trim();
             String password = _passwordCon.text.trim();
 
@@ -150,14 +151,26 @@ class _SignupPageState extends State<SignupPage> {
                 password: password,
               );
 
-              // Save user information to Firestore with the entered username
-              await FirebaseFirestore.instance.collection('users').doc(userCredential.user?.uid).set({
-                'username': username, // Save the entered username
-                'email': email,       // Save the email
-                'gender': '',         // Empty field
-                'birthDate': '',      // Empty field
-                'phone': '',          // Empty field
-                'goal': '',           // Empty field
+              // Lấy user_id từ Firebase
+              String userId = userCredential.user?.uid ?? '';
+
+              // Lưu thông tin vào Firestore
+              await FirebaseFirestore.instance.collection('users').doc(userId).set({
+                'username': username,
+                'email': email,
+                'gender': '',
+                'birthDate': '',
+                'phone': '',
+                'goal': '',
+              });
+
+              // Lưu thông tin vào Supabase
+              await Supabase.instance.client
+                  .from('users')
+                  .insert({
+                'user_id': userId,
+                'name': username,
+                'email': email,
               });
 
               // Emit success state

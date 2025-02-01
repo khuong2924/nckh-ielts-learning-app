@@ -36,6 +36,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
+
       home: FlashcardMain(), // Để lại SigninPage như cũ
     );
   }

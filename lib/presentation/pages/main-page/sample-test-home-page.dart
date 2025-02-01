@@ -75,12 +75,14 @@ class _HomePageState extends State<HomePage> {
   Future<void> _fetchTests() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _errorMessage = null; // Đặt lại thông báo lỗi
     });
+
     try {
       final tests = await _supabaseService.fetchTests();
       setState(() {
-        _tests = tests.map((e) => TestCard.fromJson(e)).toList();
+        // Chuyển đổi danh sách bài kiểm tra thành danh sách TestCard
+        _tests = tests.map((e) => TestCard.fromJson(e)).toList(); // Đảm bảo truyền userId nếu cần
         _filteredTests = _tests;
         _resultCount = _tests.length;
       });
@@ -94,7 +96,7 @@ class _HomePageState extends State<HomePage> {
       });
     } finally {
       setState(() {
-        _isLoading = false;
+        _isLoading = false; // Dừng trạng thái loading
       });
     }
   }
@@ -108,7 +110,7 @@ class _HomePageState extends State<HomePage> {
         _filteredTests = _tests
             .where((test) =>
         (test.title?.toLowerCase().contains(query.toLowerCase()) == true ||
-            test.description?.toLowerCase().contains(query.toLowerCase()) ==
+            test.title?.toLowerCase().contains(query.toLowerCase()) ==
                 true))
             .toList();
       }

@@ -1,400 +1,280 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../components/BottomNavBar.dart';
-import '../../components/CustomAppBar.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter/gestures.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:auth/presentation/components/FillInTheBlank.dart';
 import 'package:auth/presentation/pages/reading/reading-done.dart';
 
-
 class ReadingHome extends StatefulWidget {
-  const ReadingHome({super.key});
+  final int testId;
+
+  const ReadingHome({Key? key, required this.testId}) : super(key: key);
 
   @override
   State<ReadingHome> createState() => _ReadingHomeState();
 }
 
 class _ReadingHomeState extends State<ReadingHome> {
-  int _currentIndex = 0;
-  bool _checkOption1 = false;
-  bool _checkOption2 = false;
-  bool _checkOption3 = false;
-  bool _checkOption4 = false;
+  late String userId;
+  List<Map<String, dynamic>> parts = [];
+  Map<int, List<Map<String, dynamic>>> partAnswers = {};
+  Map<int, Map<int, String>> userAnswers = {}; // Câu trả lời của người dùng
+  bool isLoading = true;
+  int elapsedTime = 0;
+  Map<int, int> correctAnswersPerPart = {};
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        elapsedTime++;
+      });
+    });
+  }
+
+  Future<void> _loadData() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      userId = prefs.getString('user_id') ?? '';
+
+      final partsResponse = await Supabase.instance.client
+          .from('listening_parts') // Đảm bảo lấy dữ liệu từ reading_parts
+          .select()
+          .eq('test_id', widget.testId)
+          .order('id', ascending: true);
+
+      final List<Map<String, dynamic>> partsData = List<Map<String, dynamic>>.from(partsResponse as List);
+
+      for (var part in partsData) {
+        final answersResponse = await Supabase.instance.client
+            .from('answers')
+            .select()
+            .eq('part_id', part['id'])
+            .order('question_number', ascending: true);
+
+        partAnswers[part['id']] = List<Map<String, dynamic>>.from(answersResponse as List);
+        userAnswers[part['id']] ??= {};
+      }
+
+      setState(() {
+        parts = partsData;
+        isLoading = false;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading data: $e')),
+      );
+    }
+  }
+
+  Future<void> _submitAnswers() async {
+    // Kiểm tra xem người dùng đã trả lời đủ câu hỏi chưa
+    if (userAnswers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please answer all questions before submitting.')),
+      );
+      return;
+    }
+
+    try {
+      int totalCorrect = 0;
+      int totalQuestions = 0;
+      Map<int, int> correctCountByPart = {};
+
+      for (var entry in userAnswers.entries) {
+        final partId = entry.key;
+        final partUserAnswers = entry.value;
+        int correctCount = 0;
+
+        for (var questionEntry in partUserAnswers.entries) {
+          final questionNumber = questionEntry.key;
+          final userAnswer = questionEntry.value.trim().toLowerCase();
+
+          final correctAnswer = partAnswers[partId]?.firstWhere(
+                  (answer) => answer['question_number'] == questionNumber,
+              orElse: () => {'correct_answer': null})['correct_answer']?.toString().toLowerCase();
+
+          if (correctAnswer != null) {
+            totalQuestions++;
+            if (userAnswer == correctAnswer) {
+              correctCount++;
+              totalCorrect++;
+            }
+
+            // Lưu câu trả lời của người dùng vào bảng user_answers
+            await Supabase.instance.client.from('user_answers').insert({
+              'user_id': userId,
+              'part_id': partId,
+              'question_number': questionNumber,
+              'user_answer': userAnswer,
+              'is_correct': userAnswer == correctAnswer,
+            });
+          }
+        }
+        correctCountByPart[partId] = correctCount;
+      }
+
+      setState(() {
+        correctAnswersPerPart = correctCountByPart;
+      });
+
+      final score = _calculateIELTSScore(totalCorrect, totalQuestions);
+
+      // Lưu kết quả bài kiểm tra vào bảng test_results
+      await Supabase.instance.client.from('test_results').insert({
+        'user_id': userId,
+        'test_id': widget.testId,
+        'score': score.toInt(),
+        'total_questions': totalQuestions,
+        'time': elapsedTime,
+        'part1': correctCountByPart[1]?.toString() ?? '0',
+        'part2': correctCountByPart[2]?.toString() ?? '0',
+        'part3': correctCountByPart[3]?.toString() ?? '0',
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Test submitted! Your IELTS score is ${score.toStringAsFixed(2)}.')),
+      );
+
+      _timer?.cancel();
+
+      // Chuyển đến trang kết quả
+      Map<int, String> flattenedUserAnswers = {};
+      userAnswers.forEach((partId, answers) {
+        answers.forEach((questionNumber, answer) {
+          flattenedUserAnswers[questionNumber] = answer;
+        });
+      });
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReadingDone(
+            score: score,
+            timeTaken: elapsedTime,
+            correctAnswersPerPart: correctCountByPart,
+            userAnswers: flattenedUserAnswers,
+            parts: parts,
+            partAnswers: partAnswers,
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit answers: ${e.toString()}')),
+      );
+    }
+  }
+  double _calculateIELTSScore(int correctAnswers, int totalQuestions) {
+    if (totalQuestions == 0) return 0.0;
+    double score = (correctAnswers / totalQuestions) * 9;
+    return score.clamp(0, 9);
+  }
+  String _formatTime(int seconds) {
+    final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$secs';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFCFEBFF),
-      body: SafeArea(
-        child: Column(
-          children: [
-            CustomAppBar(
-              onNotificationTap: () {
-                // Xử lý notification
-              },
-            ),
-            _buildTitle(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    _buildPart('1-13', '1'),
-                    _quesPas1(),
-                    const SizedBox(height: 20),
-                    _buildPart('14-26', '2'),
-                    _quesPas2(),
-                    _buildSubmitButton(),
-                  ],
-                ),
-              ),
-            ),
-            BottomNavBar(
-              currentIndex: _currentIndex,
-              onTap: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  Widget _buildTitle() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Row(
+      appBar: AppBar(title: const Text('Reading Test')),
+      body: Stack(
         children: [
-          IconButton(
-            icon: SvgPicture.asset('lib/icons/ic-back.svg'),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
-          const Text(
-            'Reading',
-            style: TextStyle(
-              color: Color(0xFF202244),
-              fontSize: 21,
-              fontFamily: 'Jost',
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  Widget _quesPas1() {
-    return Padding(
-      padding: const EdgeInsets.all(1.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 10),
-          _buildPartQ('Write your answers in boxes 1-6 on your answer sheet'),
-          const SizedBox(height: 10),
-          _buildQ('- The 1____ of London increased rapidly between 1800 and 1850.'),
-          const SizedBox(height: 5),
-          _buildQ('- The streets were full of horse-drawn vehicles.'),
-          const SizedBox(height: 5),
-          _buildQ('- The 2____ of London increased rapidly between 1800 and 1850.'),
-          const SizedBox(height: 5),
-          _buildQ('- The streets were full of horse-drawn vehicles.'),
-          const SizedBox(height: 5),
-          _buildQ('- The 3____ of London increased rapidly between 1800 and 1850.'),
-          const SizedBox(height: 5),
-          _buildQ('- The streets were full of horse-drawn vehicles.'),
-          const SizedBox(height: 10),
-          _buildRow2('Answer 1', 'Answer 2'),
-          const SizedBox(height: 10),
-          _buildRow2('Answer 3', 'Answer 4'),
-          const SizedBox(height: 10),
-          _buildRow2('Answer 5', 'Answer 6'),
-          const SizedBox(height: 10),
-          _buildPartQ('In boxes 7-13 on your answer sheet, write True, False, NG.'),
-          const SizedBox(height: 10),
-          _buildQ('7. Other countries had built underground railways before the Metropolitan line openened.'),
-          const SizedBox(height: 10),
-          Container(
-            width: 150,
-            child: _buildRow('Answer 7'),
-          ),
-          const SizedBox(height: 10),
-          _buildQ('8. Other countries had built underground railways before the Metropolitan line openened.'),
-          const SizedBox(height: 10),
-          Container(
-            width: 150,
-            child: _buildRow('Answer 8'),
-          ),
-          const SizedBox(height: 10),
-          _buildQ('9. Other countries had built underground railways before the Metropolitan line openened.'),
-          const SizedBox(height: 10),
-          Container(
-            width: 150,
-            child: _buildRow('Answer 9'),
-          ),
-        ],
-      ),
-    );
-  }
-  Widget _quesPas2() {
-    return Padding(
-      padding: const EdgeInsets.all(1.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 5),
-          _buildPartQ('Which section contains the following information? Write the correct letter, A-G, in boxes 14-17 on your answer.'),
-          const SizedBox(height: 10),
-          _buildQ('NB You may use any letter more than once.'),
-          const SizedBox(height: 10),
-          _buildQ('14. a mention of negative attitudes'),
-          const SizedBox(height: 10),
-          Container(
-            width: 150,
-            child: _buildRow('Answer 14'),
-          ),
-          const SizedBox(height: 10),
-          _buildQ('15. figures demonstrating the environmental'),
-          const SizedBox(height: 10),
-          Container(
-            width: 150,
-            child: _buildRow('Answer 15'),
-          ),
-          const SizedBox(height: 10),
-          _buildQ('16. figures demonstrating the environmental'),
-          const SizedBox(height: 10),
-          Container(
-            width: 150,
-            child: _buildRow('Answer 16'),
-          ),
-          const SizedBox(height: 10),
-          _buildQ('17. reference to the disadvantages'),
-          const SizedBox(height: 10),
-          Container(
-            width: 150,
-            child: _buildRow('Answer 16'),
-          ),
-          const SizedBox(height: 15),
-          _buildPartQ('Choose ONE WORD ONLY from passage Write your answer in boxes 18-21 on your answer.'),
-          const SizedBox(height: 10),
-          _buildQ('The Roman stadiums of Europe have proved very versatile. The 18_____ of Arles, for example, was converted first into a 19_____, then into a residential.'),
-          _buildRow2('Answer 18', 'Answer 19'),
-          const SizedBox(height: 10),
-          _buildRow2('Answer 20', 'Answer 21'),
-          const SizedBox(height: 10),
-          _buildPartQ('Choose TWO letters, A-E Write the correct letters in boxes 23 and 24 on your answer. When comparing twentieth-century stadiums to ancient..., which TWO negative?'),
-          _buildAnswerCheckbox(_checkOption1, 'They are less versatile', (value) {
-            _checkOption1 = value;
-          }),
-          _buildAnswerCheckbox(_checkOption2, 'They are less imaginatively designed', (value) {
-            _checkOption2 = value;
-          }),
-          _buildAnswerCheckbox(_checkOption3, 'They are less versatile', (value) {
-            _checkOption3 = value;
-          }),
-          _buildAnswerCheckbox(_checkOption4, 'They are less imaginatively designed', (value) {
-            _checkOption4 = value;
-          }),
-        ],
-      ),
-    );
-  }
-  Widget _buildPart(String numberQuestion, String numberPassage) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: RichText(
-        text: TextSpan(
-          children: [
-            TextSpan(
-              text: 'Questions $numberQuestion. Click ',
-              style: const TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            TextSpan(
-              text: 'here', // Từ "here" có màu đỏ
-              style: const TextStyle(
-                color: Colors.red, // Màu đỏ cho từ "here"
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-                fontStyle: FontStyle.italic,
-              ),
-              recognizer: TapGestureRecognizer()
-                ..onTap = () {
-                  _showDialog(context, numberPassage, 'Hello'); // Gọi hàm hiển thị dialog khi nhấn vào "here"
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : ListView.builder(
+            itemCount: parts.length,
+            itemBuilder: (context, index) {
+              final part = parts[index];
+              final answers = partAnswers[part['id']] ?? [];
+
+              return PartWidget(
+                part: part,
+                answers: answers,
+                userAnswers: userAnswers[part['id']] ?? {},
+                onAnswerChanged: (questionNumber, answer) {
+                  setState(() {
+                    userAnswers[part['id']] ??= {};
+                    userAnswers[part['id']]![questionNumber] = answer;
+                  });
                 },
-            ),
-            TextSpan(
-              text: ' to read passage $numberPassage',
-              style: const TextStyle(
-                color: Color(0xFF404040),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w400,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  void _showDialog(BuildContext context, String numberPassage, String passage) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Passage $numberPassage'),
-          content: Text(
-            passage
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-  Widget _buildSubmitButton() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      child: ElevatedButton(
-        onPressed: () {
-          _showSubmitDialog();
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFF0067AC),
-          padding: EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        child: Text(
-          'Submit',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
-  void _showSubmitDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Submit Test'),
-        content: Text('Are you sure you want to submit your answers?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => ReadingDone()),
               );
             },
-            child: Text('Submit'),
+          ),
+          Positioned(
+            top: 10,
+            right: 10,
+            child: Chip(
+              label: Text('Time: ${_formatTime(elapsedTime)}', style: TextStyle(fontSize: 16)),
+              backgroundColor: Colors.blueAccent,
+            ),
           ),
         ],
       ),
-    );
-  }
-  Widget _buildPartQ(String question) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        question,
-        style: const TextStyle(
-          color: Color(0xFF404040),
-          fontSize: 15,
-          fontFamily: 'Jost',
-          fontWeight: FontWeight.w400,
-          fontStyle: FontStyle.italic,
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(10),
+        child: ElevatedButton(
+          onPressed: _submitAnswers,
+          child: const Text('Submit Answers'),
         ),
       ),
     );
   }
-  Widget _buildQ(String question) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        question,
-        style: const TextStyle(
-          color: Color(0xFF404040),
-          fontSize: 15,
-          fontFamily: 'Jost',
-          fontWeight: FontWeight.w400,
+}
+
+class PartWidget extends StatelessWidget {
+  final Map<String, dynamic> part;
+  final List<Map<String, dynamic>> answers;
+  final Map<int, String> userAnswers;
+  final Function(int, String) onAnswerChanged;
+
+  const PartWidget({
+    Key? key,
+    required this.part,
+    required this.answers,
+    required this.userAnswers,
+    required this.onAnswerChanged,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.all(10),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              part['part_title'],
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Text(part['part_description'] ?? 'No description'),
+            const SizedBox(height: 10),
+            Column(
+              children: answers.map((answer) {
+                return FillInTheBlankQuestion(
+                  questionText: 'Question ${answer['question_number']}',
+                  initialAnswer: userAnswers[answer['question_number']] ?? '',
+                  onAnswerSubmitted: (userAnswer) {
+                    onAnswerChanged(answer['question_number'], userAnswer?.trim() ?? ''); // Trimming spaces
+                  },
+                );
+              }).toList(),
+            ),
+          ],
         ),
       ),
-    );
-  }
-  Widget _buildRow(String label) {
-    return Padding(
-      padding: const EdgeInsets.all(4.0),
-      child: TextField(
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-          contentPadding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-          labelStyle: const TextStyle(
-            color: Color(0xFF0067AC),
-          ),
-          focusedBorder: const OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF0067AC), width: 2),
-          ),
-        ),
-      ),
-    );
-  }
-  Widget _buildRow2(String label1, String label2) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        Expanded(
-          child: _buildRow(label1), // Gọi hàm _buildRow đúng cách
-        ),
-        Expanded(
-          child: _buildRow(label2), // Gọi hàm _buildRow đúng cách
-        ),
-      ],
-    );
-  }
-  Widget _buildAnswerCheckbox(bool checkOption, String answer, Function(bool) onChanged) {
-    return Row(
-      children: [
-        Checkbox(
-          value: checkOption,
-          onChanged: (bool? value) {
-            setState(() {
-              onChanged(value!);
-            });
-          },
-          fillColor: MaterialStateProperty.resolveWith((states) {
-            if (states.contains(MaterialState.selected)) {
-              return Color(0xFF0067AC);
-            }
-          }),
-        ),
-        Text(answer),
-      ],
     );
   }
 }

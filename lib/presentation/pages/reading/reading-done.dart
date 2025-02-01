@@ -2,10 +2,26 @@ import 'package:flutter/material.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:auth/presentation/pages/reading/reading-home.dart';
+import 'package:auth/presentation/pages/test-page/viewanswer.dart';
 
+import '../main-page/sample-test-home-page.dart';
 class ReadingDone extends StatefulWidget {
-  const ReadingDone({super.key});
+  final double score;
+  final int timeTaken;
+  final Map<int, int> correctAnswersPerPart;
+  final Map<int, String> userAnswers;
+  final List<Map<String, dynamic>> parts; // Add this
+  final Map<int, List<Map<String, dynamic>>> partAnswers; // Add this
+
+  const ReadingDone({
+    Key? key,
+    required this.score,
+    required this.timeTaken,
+    required this.correctAnswersPerPart,
+    required this.userAnswers,
+    required this.parts,
+    required this.partAnswers,
+  }) : super(key: key);
 
   @override
   State<ReadingDone> createState() => _ReadingDoneState();
@@ -13,6 +29,13 @@ class ReadingDone extends StatefulWidget {
 
 class _ReadingDoneState extends State<ReadingDone> {
   int _currentIndex = 0;
+
+  double _calculateProgress(int part) {
+    int correctAnswers = widget.correctAnswersPerPart[part] ?? 0;
+    int totalQuestions = widget.userAnswers.length; // Assuming userAnswers contains answers for all parts
+    return totalQuestions > 0 ? correctAnswers / totalQuestions : 0.0;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -22,7 +45,7 @@ class _ReadingDoneState extends State<ReadingDone> {
           children: [
             CustomAppBar(
               onNotificationTap: () {
-                // Xử lý notification
+                // Handle notification
               },
             ),
             _buildTitle(),
@@ -35,7 +58,7 @@ class _ReadingDoneState extends State<ReadingDone> {
                     const SizedBox(height: 10),
                     _buildComment(),
                     const SizedBox(height: 20),
-                    _buildBand('7.5'),
+                    _buildBand(widget.score.toString()),
                     const SizedBox(height: 20),
                     _buildRoundContainer(),
                     const SizedBox(height: 20),
@@ -58,6 +81,7 @@ class _ReadingDoneState extends State<ReadingDone> {
       ),
     );
   }
+
   Widget _buildTitle() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
@@ -67,8 +91,8 @@ class _ReadingDoneState extends State<ReadingDone> {
             icon: SvgPicture.asset(
               'lib/icons/ic-close.svg',
               width: 24,
-              height: 24, // Đã sửa chính tả từ "heigh" thành "height"
-              color: Colors.black, // Đã sửa màu sắc từ "Color.Black" thành "Colors.black"
+              height: 24,
+              color: Colors.black,
             ),
             onPressed: () {
               Navigator.pop(context);
@@ -87,6 +111,7 @@ class _ReadingDoneState extends State<ReadingDone> {
       ),
     );
   }
+
   Widget _buildCongrats() {
     return Align(
       alignment: Alignment.center,
@@ -101,6 +126,7 @@ class _ReadingDoneState extends State<ReadingDone> {
       ),
     );
   }
+
   Widget _buildComment() {
     return Align(
       alignment: Alignment.center,
@@ -115,6 +141,7 @@ class _ReadingDoneState extends State<ReadingDone> {
       ),
     );
   }
+
   Widget _buildBand(String band) {
     return Container(
       width: 200,
@@ -142,7 +169,7 @@ class _ReadingDoneState extends State<ReadingDone> {
             ),
           ),
           const Padding(
-            padding: const EdgeInsets.only(bottom: 120),
+            padding: EdgeInsets.only(bottom: 120),
             child: Text(
               'Band',
               style: TextStyle(
@@ -156,7 +183,7 @@ class _ReadingDoneState extends State<ReadingDone> {
             children: [
               Text(
                 band,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 50,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -168,6 +195,7 @@ class _ReadingDoneState extends State<ReadingDone> {
       ),
     );
   }
+
   Widget _buildRoundContainer() {
     return Container(
       height: 200,
@@ -192,77 +220,13 @@ class _ReadingDoneState extends State<ReadingDone> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            height: 70,
-                            width: 70,
-                            decoration: BoxDecoration(
-                              color: Color(0xFF4681DA).withOpacity(0.26),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                '30',
-                                style: TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0067AC),
-                                ),
-                              ),
-                              Text(
-                                'Score',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0067AC).withOpacity(0.61),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      SizedBox(width: 20),
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Name this test',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0067AC),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'Band 7.5 - 53m57s',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0067AC).withOpacity(0.61),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 20),
-                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildProgress('1', 0.7),
-                      _buildProgress('2', 0.6),
-                      _buildProgress('3', 0.8),
+                      _buildProgress('1', _calculateProgress(1)),
+                      _buildProgress('2', _calculateProgress(2)),
+                      _buildProgress('3', _calculateProgress(3)),
                     ],
-                  )
+                  ),
                 ],
               ),
             ],
@@ -271,6 +235,7 @@ class _ReadingDoneState extends State<ReadingDone> {
       ),
     );
   }
+
   Widget _buildProgress(String numberPart, double progress) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -286,23 +251,23 @@ class _ReadingDoneState extends State<ReadingDone> {
                 value: progress,
                 strokeWidth: 6.0,
                 backgroundColor: Color(0xFFE33629).withOpacity(0.4),
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE33629)),
+                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE33629)),
               ),
             ),
             Text(
-              '${(progress * 10).toInt()}',
-              style: TextStyle(
-                fontSize: 32,
+              '${(progress * 100).toInt()}%', // Display percentage
+              style: const TextStyle(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
               ),
             ),
           ],
         ),
-        SizedBox(height: 10),
+        const SizedBox(height: 10),
         Text(
           'Part $numberPart',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Color(0xFF0067AC),
@@ -311,47 +276,56 @@ class _ReadingDoneState extends State<ReadingDone> {
       ],
     );
   }
+
   Widget _buildButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         ElevatedButton(
           onPressed: () {
-            Navigator.pushAndRemoveUntil(
+            Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => ReadingHome()),
-                  (Route<dynamic> route) => false,
+              MaterialPageRoute(builder: (context) => HomePage()), // Điều hướng đến ComplaintPage
             );
-
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Color(0xFF4681DA).withOpacity(0.69),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           ),
-          child: Text(
-            'Try Again',
+          child: const Text(
+            'Exit',
             style: TextStyle(
               fontSize: 14,
               color: Colors.white,
             ),
           ),
         ),
-        SizedBox(width: 20),
+        const SizedBox(width: 20),
         ElevatedButton(
           onPressed: () {
-            print("View Answer");
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ViewAnswersPage(
+                  parts: widget.parts, // Pass the actual parts data
+                  userAnswers: widget.userAnswers, // Pass user answers
+                  partAnswers: widget.partAnswers, // Pass the correct answers
+
+                ),
+              ),
+            );
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Color(0xFF0067AC),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           ),
-          child: Text(
+          child: const Text(
             'View Answer',
             style: TextStyle(
               fontSize: 14,
@@ -362,6 +336,4 @@ class _ReadingDoneState extends State<ReadingDone> {
       ],
     );
   }
-
 }
-

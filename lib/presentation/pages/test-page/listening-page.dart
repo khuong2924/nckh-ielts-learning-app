@@ -1,516 +1,306 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:audioplayers/audioplayers.dart';
-import '../../components/BottomNavBar.dart';
-import '../../components/CustomAppBar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:auth/presentation/model/TestCard.dart'; // Import TestCard
-import 'package:auth/presentation/service/SupabaseService.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:auth/presentation/pages/reading/reading-done.dart';
+import 'package:auth/presentation/components/FillInTheBlank.dart';
 
 class ListeningTestPage extends StatefulWidget {
-  const ListeningTestPage({super.key});
+  final int testId;
+
+  const ListeningTestPage({Key? key, required this.testId}) : super(key: key);
 
   @override
   State<ListeningTestPage> createState() => _ListeningTestPageState();
 }
 
 class _ListeningTestPageState extends State<ListeningTestPage> {
-  int _currentIndex = 0;
-  final AudioPlayer audioPlayer = AudioPlayer();
-  bool isPlaying = false;
-  Duration duration = Duration.zero;
-  Duration position = Duration.zero;
-  final List<TextEditingController> answerControllers =
-  List.generate(10, (index) => TextEditingController());
-  String? selectedAnswer9;
-  String? selectedAnswer10;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  late String userId;
+  List<Map<String, dynamic>> parts = [];
+  Map<int, List<Map<String, dynamic>>> partAnswers = {};
+  Map<int, Map<int, String>> userAnswers = {};
+  Map<int, int> correctAnswersPerPart = {};
+  bool isLoading = true;
+  int elapsedTime = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        elapsedTime++;
+      });
+    });
+  }
+
+  Future<void> _loadData() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      userId = prefs.getString('user_id') ?? '';
+
+      final partsResponse = await Supabase.instance.client
+          .from('listening_parts')
+          .select()
+          .eq('test_id', widget.testId)
+          .order('id', ascending: true);
+
+      final List<Map<String, dynamic>> partsData = List<Map<String, dynamic>>.from(partsResponse as List);
+
+      for (var part in partsData) {
+        final answersResponse = await Supabase.instance.client
+            .from('answers')
+            .select()
+            .eq('part_id', part['id'])
+            .order('question_number', ascending: true);
+
+        partAnswers[part['id']] = List<Map<String, dynamic>>.from(answersResponse as List);
+        userAnswers[part['id']] ??= {};
+      }
+
+      setState(() {
+        parts = partsData;
+        isLoading = false;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading data: $e')),
+      );
+    }
+  }
+
+  double _calculateIELTSScore(int correctAnswers, int totalQuestions) {
+    if (totalQuestions == 0) return 0.0;
+    double score = (correctAnswers / totalQuestions) * 9;
+    return score.clamp(0, 9);
+  }
+
+  Future<void> _submitAnswers() async {
+    // Kiểm tra xem người dùng đã trả lời đủ câu hỏi chưa
+    if (userAnswers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please answer all questions before submitting.')),
+      );
+      return;
+    }
+
+    try {
+      int totalCorrect = 0;
+      int totalQuestions = 0;
+      Map<int, int> correctCountByPart = {};
+
+      for (var entry in userAnswers.entries) {
+        final partId = entry.key;
+        final partUserAnswers = entry.value;
+        int correctCount = 0;
+
+        for (var questionEntry in partUserAnswers.entries) {
+          final questionNumber = questionEntry.key;
+          final userAnswer = questionEntry.value.trim().toLowerCase();
+
+          final correctAnswer = partAnswers[partId]?.firstWhere(
+                  (answer) => answer['question_number'] == questionNumber,
+              orElse: () => {'correct_answer': null})['correct_answer']?.toString().toLowerCase();
+
+          if (correctAnswer != null) {
+            totalQuestions++;
+            if (userAnswer == correctAnswer) {
+              correctCount++;
+              totalCorrect++;
+            }
+
+            // Lưu câu trả lời của người dùng vào bảng user_answers
+            await Supabase.instance.client.from('user_answers').insert({
+              'user_id': userId,
+              'part_id': partId,
+              'question_number': questionNumber,
+              'user_answer': userAnswer,
+              'is_correct': userAnswer == correctAnswer,
+            });
+          }
+        }
+        correctCountByPart[partId] = correctCount;
+      }
+
+      setState(() {
+        correctAnswersPerPart = correctCountByPart;
+      });
+
+      final score = _calculateIELTSScore(totalCorrect, totalQuestions);
+
+      // Lưu kết quả bài kiểm tra vào bảng test_results
+      await Supabase.instance.client.from('test_results').insert({
+        'user_id': userId,
+        'test_id': widget.testId,
+        'score': score.toInt(),
+        'total_questions': totalQuestions,
+        'time': elapsedTime,
+        'part1': correctCountByPart[1]?.toString() ?? '0',
+        'part2': correctCountByPart[2]?.toString() ?? '0',
+        'part3': correctCountByPart[3]?.toString() ?? '0',
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Test submitted! Your IELTS score is ${score.toStringAsFixed(2)}.')),
+      );
+
+      _timer?.cancel();
+
+      // Chuyển đến trang kết quả
+      Map<int, String> flattenedUserAnswers = {};
+      userAnswers.forEach((partId, answers) {
+        answers.forEach((questionNumber, answer) {
+          flattenedUserAnswers[questionNumber] = answer;
+        });
+      });
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReadingDone(
+            score: score,
+            timeTaken: elapsedTime,
+            correctAnswersPerPart: correctCountByPart,
+            userAnswers: flattenedUserAnswers,
+            parts: parts,
+            partAnswers: partAnswers,
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit answers: ${e.toString()}')),
+      );
+    }
+  }
+
+  String _formatTime(int seconds) {
+    final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$secs';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text('Listening Test')),
+      body: Stack(
+        children: [
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : ListView.builder(
+            itemCount: parts.length,
+            itemBuilder: (context, index) {
+              final part = parts[index];
+              final answers = partAnswers[part['id']] ?? [];
+              final correctCount = correctAnswersPerPart[part['id']] ?? 0;
 
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            CustomAppBar(
-              onNotificationTap: () {
-                // Xử lý notification
-              },
-            ),
-            _buildTitle(),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-
-                      _buildInstruction1(),
-                      _buildAudioPlayer(),
-
-                      _buildQuestions1to5(),
-                      _buildQuestions6to8(),
-                      _buildQuestion9(),
-                      _buildQuestion10(),
-                      _buildSubmitButton(),
-                    ],
+              return Column(
+                children: [
+                  PartWidget(
+                    part: part,
+                    answers: answers,
+                    audioPlayer: _audioPlayer,
+                    userAnswers: userAnswers[part['id']] ?? {},
+                    onAnswerChanged: (questionNumber, answer) {
+                      setState(() {
+                        userAnswers[part['id']] ??= {};
+                        userAnswers[part['id']]![questionNumber] = answer;
+                      });
+                    },
                   ),
-                ),
-              ),
-            ),
-            BottomNavBar(
-              currentIndex: _currentIndex,
-              onTap: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
-            ),
-          ],
-            ),
-          ),
-        );
-
-  }
-
-
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(10.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Container(
-            width: 54,
-            height: 49,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/images/logo.png"),
-                fit: BoxFit.fill,
-              ),
-            ),
-          ),
-          Container(
-            width: 48,
-            height: 49,
-            decoration: ShapeDecoration(
-              color: Color(0xFF0067AC),
-              shape: OvalBorder(
-                side: BorderSide(width: 1, color: Color(0xFF773287)),
-              ),
-            ),
-            child: Icon(Icons.person, color: Colors.white),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTitle() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Row(
-        children: [
-          IconButton(
-            icon: SvgPicture.asset('lib/icons/ic-back.svg'),
-            onPressed: () {
-              Navigator.pop(context);
+                ],
+              );
             },
           ),
-          const Text(
-            'Listening',
-            style: TextStyle(
-              color: Color(0xFF202244),
-              fontSize: 21,
-              fontFamily: 'Jost',
-              fontWeight: FontWeight.w600,
+          Positioned(
+            top: 10,
+            right: 10,
+            child: Chip(
+              label: Text('Time: ${_formatTime(elapsedTime)}', style: TextStyle(fontSize: 16)),
+              backgroundColor: Colors.blueAccent,
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildAudioPlayer() {
-    String formatTime(Duration duration) {
-      String twoDigits(int n) => n.toString().padLeft(2, '0');
-      final hours = twoDigits(duration.inHours);
-      final minutes = twoDigits(duration.inMinutes.remainder(60));
-      final seconds = twoDigits(duration.inSeconds.remainder(60));
-      return [if (duration.inHours > 0) hours, minutes, seconds].join(':');
-    }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 45,
-                height: 45,
-                decoration: BoxDecoration(
-                  color: const Color(0x750067AC),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: IconButton(
-                  icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                  color: Colors.white,
-                  onPressed: () {
-                    setState(() {
-                      isPlaying = !isPlaying;
-                    });
-                    // Handle audio playback
-                  },
-                ),
-              ),
-              Expanded(
-                child: Slider(
-                  min: 0,
-                  max: duration.inSeconds.toDouble(),
-                  value: position.inSeconds.toDouble(),
-                  onChanged: (value) async {
-                    // Handle seeking
-                  },
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(formatTime(position)),
-                Text(formatTime(duration)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ... Continue with previous widgets (_buildInstructions, _buildQuestions1to5, etc.)
-
-  Widget _buildSubmitButton() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      child: ElevatedButton(
-        onPressed: () {
-          // Handle submit
-          _showSubmitDialog();
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFF0067AC),
-          padding: EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        child: Text(
-          'Submit',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(10),
+        child: ElevatedButton(
+          onPressed: _submitAnswers,
+          child: const Text('Submit Answers'),
         ),
       ),
     );
   }
+}
 
-  void _showSubmitDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Submit Test'),
-        content: Text('Are you sure you want to submit your answers?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // Handle final submission
-              Navigator.pop(context);
-              // Navigate to results page
-            },
-            child: Text('Submit'),
-          ),
-        ],
-      ),
-    );
-  }
+class PartWidget extends StatelessWidget {
+  final Map<String, dynamic> part;
+  final List<Map<String, dynamic>> answers;
+  final AudioPlayer audioPlayer;
+  final Map<int, String> userAnswers;
+  final Function(int, String) onAnswerChanged;
 
-  Widget _buildInstruction1() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'To listen now, click the speaker icon:',
-            style: TextStyle(
-              color: Color(0xFFF15327),
-              fontSize: 18,
-              fontFamily: 'Roboto',
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInstruction2() {
-    return Padding(
-      padding: const EdgeInsets.all(1.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 5),
-          Text(
-            'Complete the information below, write no more than one word or a number for each answer.',
-            style: TextStyle(
-              color: Color(0xFF404040),
-              fontSize: 14,
-              fontFamily: 'Roboto',
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(height: 10),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestions1to5() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Question 1 - 5'),
-          _buildInstruction2(),
-          _buildInfoTable(),
-          const SizedBox(height: 10),
-          ...List.generate(5, (index) => _buildAnswerField(index + 1)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnswerField(int questionNumber) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-      child: TextField(
-        controller: answerControllers[questionNumber - 1],
-        decoration: InputDecoration(
-          labelText: 'Answer $questionNumber',
-          border: const OutlineInputBorder(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoTable() {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black),
-      ),
-      child: Table(
-        border: TableBorder.all(),
-        children: [
-          TableRow(
-            children: [
-              _buildTableCell('Street'),
-              _buildTableCell('Bridge Street'),
-            ],
-          ),
-          TableRow(
-            children: [
-              _buildTableCell('Owner'),
-              _buildTableCell('(1)... Smith'),
-            ],
-          ),
-          TableRow(
-            children: [
-              _buildTableCell('(2)...'),
-              _buildTableCell('0912476321'),
-            ],
-          ),
-          TableRow(
-            children: [
-              _buildTableCell('Included'),
-              _buildTableCell('(3)..., heat,(4)...'),
-            ],
-          ),
-          TableRow(
-            children: [
-              _buildTableCell('Near'),
-              _buildTableCell('Central HighSchool and (5)...'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTableCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: Color(0xFF404040),
-          fontSize: 16,
-          fontFamily: 'Roboto',
-          fontWeight: FontWeight.w400,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuestions6to8() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Question 6 - 8'),
-          _buildQuestion(
-            'What did the citizens around there think that should be enhance?',
-            [
-              'public transportation in overall',
-              'the living standards',
-              'noise pollution',
-              'heat',
-              'the lack of entertainment activities',
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestion9() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Question 9'),
-          _buildQuestion(
-            'What did Anderson think about her surroundings?',
-            [
-              'peaceful',
-              'she hate living here',
-              'abcdefgh',
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestion10() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Question 10'),
-          _buildQuestion(
-            'What did Anderson think about her surroundings?',
-            [
-              'peaceful',
-              'she hate living here',
-              'abcdefgh',
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1.0),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: Color(0xFF1D1B20),
-          fontSize: 22,
-          fontFamily: 'Roboto',
-          fontWeight: FontWeight.w400,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuestion(String question, List<String> options) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          question,
-          style: TextStyle(
-            color: Color(0xFF404040),
-            fontSize: 16,
-            fontFamily: 'Roboto',
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...options.map((option) => _buildOptionItem(option)).toList(),
-      ],
-    );
-  }
-
-  Widget _buildOptionItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            child: Radio(
-              value: text,
-              groupValue: null,
-              onChanged: (value) {
-                // Handle radio selection
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            text,
-            style: TextStyle(
-              color: Color(0xFF404040),
-              fontSize: 16,
-              fontFamily: 'Roboto',
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  const PartWidget({
+    Key? key,
+    required this.part,
+    required this.answers,
+    required this.audioPlayer,
+    required this.userAnswers,
+    required this.onAnswerChanged,
+  }) : super(key: key);
 
   @override
-  void dispose() {
-    audioPlayer.dispose();
-    for (var controller in answerControllers) {
-      controller.dispose();
-    }
-    super.dispose();
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.all(10),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              part['part_title'],
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Text(part['part_description'] ?? 'No description'),
+            const SizedBox(height: 10),
+            if (part['audio_url'] != null)
+              IconButton(
+                icon: const Icon(Icons.play_arrow, color: Colors.green),
+                onPressed: () async {
+                  try {
+                    await audioPlayer.play(UrlSource(part['audio_url'])); // Sử dụng UrlSource
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error playing audio: $e')),
+                    );
+                  }
+                },
+              ),
+            const SizedBox(height: 10),
+            Column(
+              children: answers.map((answer) {
+                return FillInTheBlankQuestion(
+                  questionText: 'Question ${answer['question_number']}',
+                  initialAnswer: userAnswers[answer['question_number']] ?? '',
+                  onAnswerSubmitted: (userAnswer) {
+                    onAnswerChanged(answer['question_number'], userAnswer ?? '');
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
