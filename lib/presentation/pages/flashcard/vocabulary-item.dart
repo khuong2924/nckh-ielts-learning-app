@@ -5,16 +5,20 @@ import '../../model/Vocabulary.dart';
 
 class VocabularyItem extends StatelessWidget {
   final Vocabulary vocabulary;
+  final ValueChanged<bool>? onLearningStatusChanged;
+  final ValueChanged<bool>? onFavoriteChanged;
 
   const VocabularyItem({
     Key? key,
     required this.vocabulary,
+    this.onLearningStatusChanged,
+    this.onFavoriteChanged,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(top: 16),
+      margin: EdgeInsets.only(bottom: 16),
       height: 55,
       decoration: ShapeDecoration(
         color: Colors.white,
@@ -72,7 +76,7 @@ class VocabularyItem extends StatelessWidget {
               color: Color(0xFF0067AC),
             ),
             onPressed: () {
-              // Handle favorite
+              onFavoriteChanged?.call(!vocabulary.isFavorite);
             },
           ),
           IconButton(
@@ -81,7 +85,7 @@ class VocabularyItem extends StatelessWidget {
               color: Color(0xFF0067AC),
             ),
             onPressed: () {
-              // Handle learned status
+              onLearningStatusChanged?.call(!vocabulary.isLearned);
             },
           ),
         ],
