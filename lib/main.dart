@@ -1,5 +1,3 @@
-import 'package:auth/presentation/pages/flashcard/flashcard-learning.dart';
-import 'package:auth/presentation/pages/flashcard/flashcard-main.dart';
 import 'package:auth/presentation/pages/flashcard/vocabulary-main.dart';
 import 'package:auth/presentation/pages/reading/reading-home.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +7,7 @@ import 'package:auth/presentation/pages/account-management/signin.dart';
 import 'package:auth/presentation/pages/reading/reading-done.dart';
 import 'package:auth/presentation/pages/main-page/sample-test-home-page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase package
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,7 +38,7 @@ class MyApp extends StatelessWidget {
       ),
       debugShowCheckedModeBanner: false,
 
-      home: FlashcardLearning(), // Để lại SigninPage như cũ
+      home: SigninPage(), // Để lại SigninPage như cũ
     );
   }
 }

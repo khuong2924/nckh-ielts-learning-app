@@ -1,6 +1,7 @@
 import 'package:auth/presentation/pages/main-page/home-page.dart';
 import 'package:auth/presentation/pages/main-page/sample-test-home-page.dart';
 import 'package:flutter/material.dart';
+import 'package:auth/presentation/pages/flashcard/flashcard-home.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 // Đảm bảo import trang ComplaintPage
 
@@ -37,9 +38,15 @@ class BottomNavBar extends StatelessWidget {
               MaterialPageRoute(builder: (context) => HomeLoad()), // Điều hướng đến ComplaintPage
             );
           }),
-          _buildNavItem('Flashcard', 'lib/icons/ic-homecard.png', currentIndex == 1, isImage: true, onTap: () => onTap(1)),
+          _buildNavItem('Flashcard', 'lib/icons/ic-homecard.png', currentIndex == 1, isImage: true, onTap: () {
+            onTap(1);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => FlashcardHome()), // Điều hướng đến ComplaintPage
+            );
+          }),
           _buildNavItem('Journey', 'lib/icons/ic-journey.svg', currentIndex == 2, onTap: () {
-            onTap(0);
+            onTap(2);
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => HomePage()), // Điều hướng đến ComplaintPage
