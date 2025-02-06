@@ -1,3 +1,4 @@
+import 'package:auth/presentation/pages/flashcard/flashcard-done-result.dart';
 import 'package:auth/presentation/pages/flashcard/vocabulary-main.dart';
 import 'package:auth/presentation/pages/reading/reading-home.dart';
 import 'package:flutter/material.dart';
@@ -38,7 +39,7 @@ class MyApp extends StatelessWidget {
       ),
       debugShowCheckedModeBanner: false,
 
-      home: SigninPage(), // Để lại SigninPage như cũ
+      home: FlashCardDone(), // Để lại SigninPage như cũ
     );
   }
 }
