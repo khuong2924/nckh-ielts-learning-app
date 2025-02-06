@@ -5,8 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 import '../../model/Vocabulary.dart';
+import 'flashcard-learning.dart';
 import 'learning-category.dart';
-import 'learning-category-card.dart';
+import 'package:auth/presentation/pages/flashcard/learning-category-card.dart';
 
 class VocabularyMain extends StatefulWidget {
   final String topicId;
@@ -22,7 +23,6 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
   List<Vocabulary> vocabularies = [];
   late String userId;
 
-  // Khai báo danh sách learningCategories
   final List<LearningCategory> learningCategories = [
     LearningCategory(
       title: 'FlashCard',
@@ -55,13 +55,11 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
   }
 
   Future<void> _loadVocabularyForTopic(String topicId) async {
-    // Lấy danh sách từ vựng có flashcard_id bằng topicId
     final response = await Supabase.instance.client
         .from('flashcard_words')
         .select()
-        .eq('flashcard_id', topicId); // Không sử dụng execute
+        .eq('flashcard_id', topicId);
 
-    // Chuyển đổi kết quả thành danh sách từ vựng
     final vocabList = (response as List).map((e) => Vocabulary(
       id: e['id'],
       englishWord: e['word'],
@@ -70,8 +68,8 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
       partOfSpeech: e['part_of_speech'],
       example: e['example'],
       audioUrl: e['audio_url'],
-      isLearned: false, // Mặc định là chưa học
-      isFavorite: false, // Mặc định là chưa yêu thích
+      isLearned: false,
+      isFavorite: false,
     )).toList();
 
     for (var vocab in vocabList) {
@@ -79,30 +77,29 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
           .from('user_vocabulary_progress')
           .select()
           .eq('user_id', userId)
-          .eq('vocabulary_id', vocab.id); // Không sử dụng execute
+          .eq('vocabulary_id', vocab.id);
 
-      // Cập nhật trạng thái học tập và yêu thích
       if (progressResponse.isNotEmpty) {
         final progressData = progressResponse[0];
-        vocab.isLearned = progressData['is_learned'] ?? false; // Giữ giá trị mặc định nếu không tìm thấy
-        vocab.isFavorite = progressData['is_favorite'] ?? false; // Giữ giá trị mặc định nếu không tìm thấy
+        vocab.isLearned = progressData['is_learned'] ?? false;
+        vocab.isFavorite = progressData['is_favorite'] ?? false;
       } else {
-        // Nếu không tìm thấy, tạo một mục mới trong bảng user_vocabulary_progress
         await Supabase.instance.client
             .from('user_vocabulary_progress')
             .insert({
           'user_id': userId,
           'vocabulary_id': vocab.id,
-          'is_learned': false, // Đặt trạng thái mặc định là chưa học
-          'is_favorite': false, // Đặt trạng thái mặc định là chưa yêu thích
+          'is_learned': false,
+          'is_favorite': false,
         });
       }
     }
 
     setState(() {
-      vocabularies = vocabList; // Cập nhật danh sách từ vựng
+      vocabularies = vocabList;
     });
   }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -168,6 +165,17 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
             itemBuilder: (context, index) {
               return LearningCategoryCard(
                 category: learningCategories[index],
+                onTap: () {
+                  if (learningCategories[index].title == 'FlashCard') {
+                    // Điều hướng đến FlashcardLearning với ID topic
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FlashcardLearning(flashcardId: widget.topicId), // Sử dụng topicId
+                      ),
+                    );
+                  }
+                },
               );
             },
           ),
@@ -243,7 +251,6 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
                 isLearned: value,
               );
 
-              // Cập nhật trạng thái học tập vào bảng user_vocabulary_progress
               Supabase.instance.client
                   .from('user_vocabulary_progress')
                   .upsert({
@@ -260,7 +267,6 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
                 isFavorite: value,
               );
 
-              // Cập nhật trạng thái yêu thích vào bảng user_vocabulary_progress
               Supabase.instance.client
                   .from('user_vocabulary_progress')
                   .upsert({

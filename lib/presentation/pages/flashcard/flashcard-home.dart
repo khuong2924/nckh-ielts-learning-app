@@ -5,7 +5,8 @@ import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:auth/presentation/pages/flashcard/vocabulary-main.dart';
-import '../../model/Flashcards.dart';
+import '../../model/FlashCards.dart';
+
 
 class FlashcardHome extends StatefulWidget {
   const FlashcardHome({super.key});
@@ -31,12 +32,11 @@ class _FlashcardHomeState extends State<FlashcardHome> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     userId = prefs.getString('user_id') ?? '';
     await _loadFlashcards();
+    await _loadFlashcardsProgress(); // Tải tiến trình flashcards sau khi tải flashcards
   }
 
   Future<void> _loadFlashcards() async {
-    final response = await _supabase
-        .from('flashcards')
-        .select();
+    final response = await _supabase.from('flashcards').select();
 
     if (response != null && response.length > 0) {
       setState(() {
@@ -59,8 +59,25 @@ class _FlashcardHomeState extends State<FlashcardHome> {
           _progressList = progressResponse.map((e) => FlashcardProgress.fromMap(e)).toList();
         });
       } else {
-        print('Lỗi khi tải tiến trình flashcards');
+        // Nếu không tìm thấy tiến trình, tạo bản ghi mới cho mỗi flashcard
+        for (var flashcard in _flashcards) {
+          await _createProgressForFlashcard(flashcard.id);
+        }
       }
+    }
+  }
+
+  Future<void> _createProgressForFlashcard(String flashcardId) async {
+    final response = await _supabase.from('flashcards_progress').insert({
+      'user_id': userId,
+      'flashcard_id': flashcardId,
+      'progress': 0, // Tiến trình khởi đầu là 0
+    });
+
+    if (response.error != null) {
+      print('Lỗi khi tạo tiến trình cho flashcard: ${response.error!.message}');
+    } else {
+      print('Đã tạo tiến trình cho flashcard: $flashcardId');
     }
   }
 

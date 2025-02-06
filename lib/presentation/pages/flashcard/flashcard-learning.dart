@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Đảm bảo import Supabase
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
-import '../../model/FlashCard.dart';
-import '../../model/FlashCardWord.dart';
-
-
+import '../../model/Flashcards.dart';
+import '../../model/Vocabulary.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 class FlashcardLearning extends StatefulWidget {
-  final FlashCard? flashcard;
+  final String flashcardId; // Nhận ID flashcard
 
-  const FlashcardLearning({Key? key, this.flashcard}) : super(key: key);
+  const FlashcardLearning({Key? key, required this.flashcardId}) : super(key: key);
 
   @override
   State<FlashcardLearning> createState() => _FlashcardDetailScreenState();
@@ -20,38 +20,13 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
   late AnimationController _controller;
   late Animation<double> _animation;
   int currentWordIndex = 0;
-  late FlashCard _flashcard;
-
-  final List<FlashcardWord> words = [
-    FlashcardWord(
-      englishWord: 'Cat',
-      vietnameseWord: 'Mèo',
-      pronunciation: '/kæt/',
-      description: 'A small domesticated carnivorous mammal with soft fur.',
-      imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/1200px-Cat03.jpg',
-      audioUrl: 'https://example.com/cat.mp3',
-    ),
-    FlashcardWord(
-      englishWord: 'Dog',
-      vietnameseWord: 'Chó',
-      pronunciation: '/dɔg/',
-      description: 'A domesticated carnivorous mammal that typically has a long snout.',
-      imageUrl: 'https://hips.hearstapps.com/hmg-prod/images/dog-puppy-on-garden-royalty-free-image-1586966191.jpg',
-      audioUrl: 'https://example.com/dog.mp3',
-    ),
-  ];
-
+  late Flashcard _flashcard;
+  List<Vocabulary> words = []; // Danh sách từ vựng
+  int userProgress = 0; // Tiến trình của người dùng
+  FlutterTts flutterTts = FlutterTts();
   @override
   void initState() {
     super.initState();
-    _flashcard = widget.flashcard ?? FlashCard(
-      id: '1',
-      title: 'Animals Vocabulary',
-      author: 'English Learning App',
-      totalWords: 100,
-      currentProgress: 40,
-      maxProgress: 100,
-    );
 
     _controller = AnimationController(
       duration: Duration(milliseconds: 500),
@@ -60,8 +35,76 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
     _animation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
+
+    _loadFlashcardData(widget.flashcardId); // Gọi hàm để tải dữ liệu flashcard
+  }
+  Future<void> _handlePronunciation() async {
+    final word = words[currentWordIndex].englishWord;
+    await flutterTts.setLanguage("en-US");
+    await flutterTts.setSpeechRate(0.5); // Tốc độ nói
+    await flutterTts.setPitch(1.0); // Cao độ giọng nói
+    await flutterTts.speak(word); // Đọc từ vựng
+  }
+  Future<void> _loadFlashcardData(String flashcardId) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('flashcards')
+          .select()
+          .eq('id', flashcardId)
+          .single();
+      print(response);
+      if (response != null) {
+        // Kiểm tra từng trường có giá trị không null
+        final flashcard = response; // Giả sử response trả về một đối tượng
+
+        String topic = flashcard['topic'] ?? 'Unknown Topic';
+        int totalWords = flashcard['total_words'] ?? 0;
+        String createdAt = flashcard['created_at'] ?? '';
+        String author = flashcard['author'] ?? 'Unknown Author';
+
+        setState(() {
+          _flashcard = Flashcard(
+            id: flashcard['id'],
+            topic: flashcard['topic'],
+            totalWords: flashcard['total_words'],
+            createdAt: DateTime.parse(flashcard['created_at']),
+          );
+        });
+
+        await _loadVocabulary(); // Gọi sau khi cập nhật flashcard
+
+        print('Flashcard created: $topic');
+      } else {
+        print('No flashcard found with the given ID.');
+      }
+    } catch (e) {
+      print('Error loading flashcard data: $e'); // Ghi lỗi
+    }
   }
 
+  Future<void> _loadVocabulary() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('flashcard_words')
+          .select()
+          .eq('flashcard_id', _flashcard.id);
+
+      // Chắc chắn rằng phản hồi có chứa dữ liệu
+      if (response != null && response is List) {
+        final List<Vocabulary> loadedWords = response
+            .map((item) => Vocabulary.fromMap(item))
+            .toList();
+
+        setState(() {
+          words = loadedWords; // Cập nhật danh sách từ vựng
+        });
+      } else {
+        print('No vocabulary found for this flashcard.'); // Nếu không có từ vựng
+      }
+    } catch (e) {
+      print('Error fetching vocabulary: $e'); // Ghi lỗi
+    }
+  }
   @override
   void dispose() {
     _controller.dispose();
@@ -77,11 +120,6 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
     setState(() {
       isFlipped = !isFlipped;
     });
-  }
-
-  void _handlePronunciation() {
-    final word = words[currentWordIndex];
-    print('Playing pronunciation for: ${word.englishWord}');
   }
 
   void _handleNext() {
@@ -133,7 +171,7 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
                 ),
               ),
               Text(
-                '${_flashcard.currentProgress}/${_flashcard.maxProgress}',
+                '$userProgress/${_flashcard.totalWords}',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -146,7 +184,7 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: _flashcard.currentProgress / _flashcard.maxProgress,
+              value: userProgress / _flashcard.totalWords,
               backgroundColor: Colors.grey[200],
               valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0067AC)),
               minHeight: 8,
@@ -157,7 +195,7 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
     );
   }
 
-  Widget _buildWordDetailsCard(FlashcardWord word) {
+  Widget _buildWordDetailsCard(Vocabulary word) {
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       padding: EdgeInsets.all(16),
@@ -178,7 +216,7 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: Image.network(
-              word.imageUrl,
+              word.imageUrl ?? '', // Kiểm tra null
               height: 200,
               width: double.infinity,
               fit: BoxFit.cover,
@@ -207,7 +245,7 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
                   ),
                   SizedBox(height: 4),
                   Text(
-                    word.pronunciation,
+                    word.pronunciation ?? 'N/A', // Kiểm tra null
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w500,
@@ -239,7 +277,7 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
     );
   }
 
-  Widget _buildDescriptionCard(FlashcardWord word) {
+  Widget _buildDescriptionCard(Vocabulary word) {
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       padding: EdgeInsets.all(16),
@@ -266,7 +304,7 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
           ),
           SizedBox(height: 8),
           Text(
-            word.description,
+            word.meaning ?? 'N/A', // Kiểm tra null
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey[600],
@@ -278,7 +316,7 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
     );
   }
 
-  Widget _buildFlashcard(FlashcardWord word) {
+  Widget _buildFlashcard(Vocabulary word) {
     return GestureDetector(
       onTap: _flipCard,
       child: AnimatedBuilder(
@@ -356,6 +394,10 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
 
   @override
   Widget build(BuildContext context) {
+    if (words.isEmpty) {
+      return Center(child: CircularProgressIndicator()); // Hiển thị loading
+    }
+
     final currentWord = words[currentWordIndex];
     return Scaffold(
       body: Container(
@@ -382,19 +424,12 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _flashcard.title,
+                              _flashcard.topic,
                               style: TextStyle(
                                 color: Color(0xFF202244),
                                 fontSize: 24,
                                 fontFamily: 'Jost',
                                 fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              'by ${_flashcard.author}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
                               ),
                             ),
                           ],
@@ -455,7 +490,7 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
           ),
         ],
       ),
-      padding: EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 8), // Giảm padding top
+      padding: EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 8),
       child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -465,8 +500,8 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
               children: [
                 // Nút Back
                 Container(
-                  width: 42, // Giảm kích thước nút
-                  height: 42, // Giảm kích thước nút
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [Color(0xFF0067AC), Color(0xFF0088DC)],
@@ -498,7 +533,7 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
 
                 // Tap to flip indicator
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8), // Giảm padding
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: Color(0xFF0067AC).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
@@ -512,14 +547,14 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
                       Icon(
                         Icons.touch_app_rounded,
                         color: Color(0xFF0067AC),
-                        size: 18, // Giảm kích thước icon
+                        size: 18,
                       ),
-                      SizedBox(width: 6), // Giảm khoảng cách
+                      SizedBox(width: 6),
                       Text(
                         'Tap to flip',
                         style: TextStyle(
                           color: Color(0xFF0067AC),
-                          fontSize: 13, // Giảm font size
+                          fontSize: 13,
                           fontWeight: FontWeight.w500,
                           letterSpacing: 0.3,
                         ),
@@ -530,8 +565,8 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
 
                 // Nút Next
                 Container(
-                  width: 42, // Giảm kích thước nút
-                  height: 42, // Giảm kích thước nút
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [Color(0xFF0067AC), Color(0xFF0088DC)],

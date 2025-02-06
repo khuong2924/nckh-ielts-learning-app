@@ -25,7 +25,7 @@ class Flashcard {
 class FlashcardProgress {
   final int id;             // SERIAL (auto-incremented integer)
   final String userId;      // UUID (Firebase UID)
-  final String flashcardId;  // UUID
+  final String flashcardId; // UUID
   final int progress;       // INT
 
   FlashcardProgress({

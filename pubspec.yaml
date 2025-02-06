@@ -15,6 +15,7 @@ dependencies:
   flutter_svg: ^1.0.3
   firebase_core:
   firebase_auth:
+  flutter_tts: ^3.7.0
   cloud_firestore:
   sqflite: ^2.2.0
   path: ^1.8.3

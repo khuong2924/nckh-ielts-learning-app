@@ -1,14 +1,16 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:auth/presentation/pages/flashcard/flashcard-learning.dart'; // Import trang FlashCard
 
 import 'learning-category.dart';
-
 class LearningCategoryCard extends StatelessWidget {
   final LearningCategory category;
+  final VoidCallback onTap; // Thêm tham số onTap
 
   const LearningCategoryCard({
     Key? key,
     required this.category,
+    required this.onTap, // Nhận tham số onTap
   }) : super(key: key);
 
   @override
@@ -22,9 +24,7 @@ class LearningCategoryCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         child: InkWell(
-          onTap: () {
-            // Handle category tap
-          },
+          onTap: onTap, // Gọi hàm onTap khi nhấn
           borderRadius: BorderRadius.circular(12),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
