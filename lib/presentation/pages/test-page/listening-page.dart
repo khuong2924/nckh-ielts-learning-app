@@ -168,12 +168,13 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
             score: score,
             timeTaken: elapsedTime,
             correctAnswersPerPart: correctCountByPart,
-            userAnswers: flattenedUserAnswers,
+            userAnswers: userAnswers, // Giữ nguyên Map<int, Map<int, String>>
             parts: parts,
             partAnswers: partAnswers,
           ),
         ),
       );
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to submit answers: ${e.toString()}')),

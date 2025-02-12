@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class CustomAppBar extends StatelessWidget {
+  final VoidCallback? onMenuTap;
   final VoidCallback? onNotificationTap;
 
   const CustomAppBar({
     super.key,
+    this.onMenuTap,
     this.onNotificationTap,
   });
 
@@ -16,11 +18,14 @@ class CustomAppBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Image.asset(
-            'lib/images/starter-img.png',
-            width: 54,
-            height: 49,
-            fit: BoxFit.cover,
+          GestureDetector(
+            onTap: onMenuTap, // Thêm sự kiện nhấn vào hình ảnh
+            child: Image.asset(
+              'lib/images/starter-img.png',
+              width: 54,
+              height: 49,
+              fit: BoxFit.cover,
+            ),
           ),
           Container(
             decoration: BoxDecoration(

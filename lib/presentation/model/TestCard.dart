@@ -111,15 +111,15 @@ class TestCard extends StatelessWidget {
       return;
     }
 
-    final userAnswers = <int, String>{};
-    final partAnswers = <int, List<Map<String, dynamic>>>{};
+    final Map<int, Map<int, String>> userAnswers = {}; // Định dạng mới
+    final Map<int, List<Map<String, dynamic>>> partAnswers = {};
 
     // Lấy dữ liệu cho tất cả các phần
     for (var part in parts) {
       final userAnswerMap = await _getUserAnswers(userId, part['id']);
       final partAnswerList = await _getPartAnswers(part['id']);
 
-      userAnswers.addAll(userAnswerMap);
+      userAnswers[part['id']] = userAnswerMap; // Thay đổi cách lưu trữ dữ liệu
       partAnswers[part['id']] = partAnswerList;
     }
 
@@ -131,8 +131,8 @@ class TestCard extends StatelessWidget {
       MaterialPageRoute(
         builder: (context) => ViewAnswersPage(
           parts: parts,
-          userAnswers: userAnswers, // Đảm bảo rằng kiểu dữ liệu là Map<int, String>
-          partAnswers: partAnswers, // Đảm bảo rằng kiểu dữ liệu là Map<int, List<Map<String, dynamic>>>
+          userAnswersPerPart: userAnswers, // Cập nhật với kiểu dữ liệu mới
+          partAnswers: partAnswers,
         ),
       ),
     );

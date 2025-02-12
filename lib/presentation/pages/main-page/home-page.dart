@@ -1,8 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:auth/presentation/pages/account-management/signin.dart';
 
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
@@ -17,6 +16,14 @@ class HomeLoad extends StatefulWidget {
 class _HomeLoad extends State<HomeLoad> {
   int _currentIndex = 0;
 
+  void _signOut() async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const SigninPage()), // Chuyển về trang đăng nhập
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -25,6 +32,7 @@ class _HomeLoad extends State<HomeLoad> {
         child: Column(
           children: [
             CustomAppBar(
+              onMenuTap: _signOut,
               onNotificationTap: () {
                 // Xử lý notification
               },
@@ -75,7 +83,7 @@ class _HomeLoad extends State<HomeLoad> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0x5455acee),
+        color: const Color(0xFF55ACEE), // Màu hợp lệ (định dạng ARGB)
         border: Border.all(color: const Color(0xff000000)),
         borderRadius: BorderRadius.circular(22),
       ),
@@ -95,7 +103,7 @@ class _HomeLoad extends State<HomeLoad> {
                 ),
                 SizedBox(height: 12),
                 Text(
-                  '37/10/2024',
+                  '37/10/2024', // Kiểm tra lại ngày hợp lệ
                   style: TextStyle(
                     fontSize: 12,
                     color: Color(0xff7674a4),
@@ -105,14 +113,10 @@ class _HomeLoad extends State<HomeLoad> {
               ],
             ),
           ),
-          Column(
-            children: [
-              SvgPicture.asset(
-                'lib/icons/ic-graph.svg',
-                width: 94,
-                height: 94,
-              ),
-            ],
+          SvgPicture.asset(
+            'lib/icons/ic-graph.svg',
+            width: 94,
+            height: 94,
           ),
         ],
       ),
@@ -124,10 +128,10 @@ class _HomeLoad extends State<HomeLoad> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Todays recommendations',
+          'Today\'s recommendations',
           style: TextStyle(
             fontSize: 20,
-            color: Colors.white,
+            color: Colors.black, // Đổi sang màu dễ đọc hơn
             fontFamily: 'Montserrat-Bold',
           ),
         ),
@@ -150,7 +154,7 @@ class _HomeLoad extends State<HomeLoad> {
         const SizedBox(height: 15),
         _buildLessonCard(
           title: 'Random topic',
-          subtitle: 'writing',
+          subtitle: 'Writing',
           iconPath: 'lib/icons/ic-lock.svg',
           status: 'waiting',
           borderColor: const Color(0xffc9c9c9),

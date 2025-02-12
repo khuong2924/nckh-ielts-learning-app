@@ -98,7 +98,7 @@ class ResetPassword extends StatelessWidget {
       TextSpan(
         children: [
           const TextSpan(
-            text: 'Do you have an account?',
+            text: 'Aldready have an account?',
             style: TextStyle(
               color: Color(0xff3B4054),
               fontWeight: FontWeight.w500,

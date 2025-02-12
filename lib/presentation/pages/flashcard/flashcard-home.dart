@@ -189,27 +189,6 @@ class _FlashcardHomeState extends State<FlashcardHome> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Text(
-                  'By',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF202244),
-                  ),
-                ),
-                SizedBox(width: 5),
-                Text(
-                  author,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black54,
-                  ),
-                ),
-              ],
-            ),
             const SizedBox(height: 10),
             Text(
               nameTopic,

@@ -9,7 +9,7 @@ class ReadingDone extends StatefulWidget {
   final double score;
   final int timeTaken;
   final Map<int, int> correctAnswersPerPart;
-  final Map<int, String> userAnswers;
+  final Map<int, Map<int, String>> userAnswers;
   final List<Map<String, dynamic>> parts; // Add this
   final Map<int, List<Map<String, dynamic>>> partAnswers; // Add this
 
@@ -311,7 +311,7 @@ class _ReadingDoneState extends State<ReadingDone> {
               MaterialPageRoute(
                 builder: (context) => ViewAnswersPage(
                   parts: widget.parts, // Pass the actual parts data
-                  userAnswers: widget.userAnswers, // Pass user answers
+                  userAnswersPerPart: widget.userAnswers, // Pass user answers
                   partAnswers: widget.partAnswers, // Pass the correct answers
 
                 ),
