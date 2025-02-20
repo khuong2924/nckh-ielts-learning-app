@@ -1,4 +1,5 @@
 import 'package:auth/presentation/pages/reading/reading-home.dart';
+import 'package:auth/presentation/pages/writing/writing-page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:auth/presentation/pages/test-page/listening-page.dart';
@@ -242,7 +243,14 @@ class TestCard extends StatelessWidget {
                                         builder: (context) => ListeningTestPage(testId: testId!),
                                       ),
                                     );
-                                  } else if (testType == 'reading') {
+                                  } else if (testType == 'writing') {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => WritingPage(testId: testId!),
+                                      ),
+                                    );
+                                  }else if (testType == 'reading') {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
