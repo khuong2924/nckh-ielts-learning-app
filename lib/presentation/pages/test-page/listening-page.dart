@@ -32,6 +32,13 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
     _loadData();
     _startTimer();
   }
+  @override
+  void dispose() {
+    _timer?.cancel(); // Dừng bộ đếm thời gian
+    _audioPlayer.stop(); // Dừng âm thanh ngay lập tức
+    _audioPlayer.dispose(); // Giải phóng tài nguyên của AudioPlayer
+    super.dispose();
+  }
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -83,7 +90,6 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
   }
 
   Future<void> _submitAnswers() async {
-    // Kiểm tra xem người dùng đã trả lời đủ câu hỏi chưa
     if (userAnswers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please answer all questions before submitting.')),
@@ -116,7 +122,6 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
               totalCorrect++;
             }
 
-            // Lưu câu trả lời của người dùng vào bảng user_answers
             await Supabase.instance.client.from('user_answers').insert({
               'user_id': userId,
               'part_id': partId,
@@ -135,7 +140,6 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
 
       final score = _calculateIELTSScore(totalCorrect, totalQuestions);
 
-      // Lưu kết quả bài kiểm tra vào bảng test_results
       await Supabase.instance.client.from('test_results').insert({
         'user_id': userId,
         'test_id': widget.testId,
@@ -153,13 +157,8 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
 
       _timer?.cancel();
 
-      // Chuyển đến trang kết quả
-      Map<int, String> flattenedUserAnswers = {};
-      userAnswers.forEach((partId, answers) {
-        answers.forEach((questionNumber, answer) {
-          flattenedUserAnswers[questionNumber] = answer;
-        });
-      });
+      // **Dừng ngay âm thanh đang phát trước khi chuyển màn hình**
+      await _audioPlayer.stop();
 
       Navigator.pushReplacement(
         context,
@@ -168,7 +167,7 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
             score: score,
             timeTaken: elapsedTime,
             correctAnswersPerPart: correctCountByPart,
-            userAnswers: userAnswers, // Giữ nguyên Map<int, Map<int, String>>
+            userAnswers: userAnswers,
             parts: parts,
             partAnswers: partAnswers,
           ),
@@ -182,6 +181,7 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
     }
   }
 
+
   String _formatTime(int seconds) {
     final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
     final secs = (seconds % 60).toString().padLeft(2, '0');
@@ -190,56 +190,80 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Listening Test')),
-      body: Stack(
-        children: [
-          isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-            itemCount: parts.length,
-            itemBuilder: (context, index) {
-              final part = parts[index];
-              final answers = partAnswers[part['id']] ?? [];
-              final correctCount = correctAnswersPerPart[part['id']] ?? 0;
-
-              return Column(
-                children: [
-                  PartWidget(
-                    part: part,
-                    answers: answers,
-                    audioPlayer: _audioPlayer,
-                    userAnswers: userAnswers[part['id']] ?? {},
-                    onAnswerChanged: (questionNumber, answer) {
-                      setState(() {
-                        userAnswers[part['id']] ??= {};
-                        userAnswers[part['id']]![questionNumber] = answer;
-                      });
-                    },
-                  ),
-                ],
-              );
-            },
-          ),
-          Positioned(
-            top: 10,
-            right: 10,
-            child: Chip(
-              label: Text('Time: ${_formatTime(elapsedTime)}', style: TextStyle(fontSize: 16)),
-              backgroundColor: Colors.blueAccent,
+    return WillPopScope(
+      onWillPop: () async {
+        bool shouldExit = await _showExitConfirmation();
+        return shouldExit;
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Listening Test')),
+        body: Stack(
+          children: [
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+              itemCount: parts.length,
+              itemBuilder: (context, index) {
+                final part = parts[index];
+                final answers = partAnswers[part['id']] ?? [];
+                return PartWidget(
+                  part: part,
+                  answers: answers,
+                  audioPlayer: _audioPlayer,
+                  userAnswers: userAnswers[part['id']] ?? {},
+                  onAnswerChanged: (questionNumber, answer) {
+                    setState(() {
+                      userAnswers[part['id']] ??= {};
+                      userAnswers[part['id']]![questionNumber] = answer;
+                    });
+                  },
+                );
+              },
             ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Chip(
+                label: Text('Time: ${_formatTime(elapsedTime)}',
+                    style: TextStyle(fontSize: 16)),
+                backgroundColor: Colors.blueAccent,
+              ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.all(10),
+          child: ElevatedButton(
+            onPressed: _submitAnswers,
+            child: const Text('Submit Answers'),
           ),
-        ],
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(10),
-        child: ElevatedButton(
-          onPressed: _submitAnswers,
-          child: const Text('Submit Answers'),
         ),
       ),
     );
   }
+
+
+  Future<bool> _showExitConfirmation() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit Test?'),
+        content: const Text('Are you sure you want to exit? Your progress will not be saved.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false), // Không thoát
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true), // Thoát
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    ) ??
+        false; // Mặc định không thoát nếu không chọn gì
+  }
+
 }
 
 class PartWidget extends StatelessWidget {
