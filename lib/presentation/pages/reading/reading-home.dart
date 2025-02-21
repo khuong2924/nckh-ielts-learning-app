@@ -50,7 +50,8 @@ class _ReadingHomeState extends State<ReadingHome> {
           .eq('test_id', widget.testId)
           .order('id', ascending: true);
 
-      final List<Map<String, dynamic>> partsData = List<Map<String, dynamic>>.from(partsResponse as List);
+      final List<Map<String, dynamic>> partsData = List<
+          Map<String, dynamic>>.from(partsResponse as List);
 
       for (var part in partsData) {
         final answersResponse = await Supabase.instance.client
@@ -59,7 +60,8 @@ class _ReadingHomeState extends State<ReadingHome> {
             .eq('part_id', part['id'])
             .order('question_number', ascending: true);
 
-        partAnswers[part['id']] = List<Map<String, dynamic>>.from(answersResponse as List);
+        partAnswers[part['id']] =
+        List<Map<String, dynamic>>.from(answersResponse as List);
         userAnswers[part['id']] ??= {};
       }
 
@@ -78,7 +80,8 @@ class _ReadingHomeState extends State<ReadingHome> {
     // Kiểm tra xem người dùng đã trả lời đủ câu hỏi chưa
     if (userAnswers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please answer all questions before submitting.')),
+        const SnackBar(
+            content: Text('Please answer all questions before submitting.')),
       );
       return;
     }
@@ -99,7 +102,9 @@ class _ReadingHomeState extends State<ReadingHome> {
 
           final correctAnswer = partAnswers[partId]?.firstWhere(
                   (answer) => answer['question_number'] == questionNumber,
-              orElse: () => {'correct_answer': null})['correct_answer']?.toString().toLowerCase();
+              orElse: () => {'correct_answer': null})['correct_answer']
+              ?.toString()
+              .toLowerCase();
 
           if (correctAnswer != null) {
             totalQuestions++;
@@ -140,7 +145,9 @@ class _ReadingHomeState extends State<ReadingHome> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Test submitted! Your IELTS score is ${score.toStringAsFixed(2)}.')),
+        SnackBar(content: Text(
+            'Test submitted! Your IELTS score is ${score.toStringAsFixed(
+                2)}.')),
       );
 
       _timer?.cancel();
@@ -156,29 +163,31 @@ class _ReadingHomeState extends State<ReadingHome> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => ReadingDone(
-            score: score,
-            timeTaken: elapsedTime,
-            correctAnswersPerPart: correctCountByPart,
-            userAnswers: userAnswers, // Giữ nguyên Map<int, Map<int, String>>
-            parts: parts,
-            partAnswers: partAnswers,
-          ),
+          builder: (context) =>
+              ReadingDone(
+                score: score,
+                timeTaken: elapsedTime,
+                correctAnswersPerPart: correctCountByPart,
+                userAnswers: userAnswers,
+                // Giữ nguyên Map<int, Map<int, String>>
+                parts: parts,
+                partAnswers: partAnswers,
+              ),
         ),
       );
-
-
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to submit answers: ${e.toString()}')),
       );
     }
   }
+
   double _calculateIELTSScore(int correctAnswers, int totalQuestions) {
     if (totalQuestions == 0) return 0.0;
     double score = (correctAnswers / totalQuestions) * 9;
     return score.clamp(0, 9);
   }
+
   String _formatTime(int seconds) {
     final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
     final secs = (seconds % 60).toString().padLeft(2, '0');
@@ -187,54 +196,84 @@ class _ReadingHomeState extends State<ReadingHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Reading Test')),
-      body: Stack(
-        children: [
-          isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-            itemCount: parts.length,
-            itemBuilder: (context, index) {
-              final part = parts[index];
-              final answers = partAnswers[part['id']] ?? [];
+    return WillPopScope(
+      onWillPop: () async {
+        bool confirmExit = await _showExitConfirmation();
+        return confirmExit;
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Reading Test')),
+        body: Stack(
+          children: [
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+              itemCount: parts.length,
+              itemBuilder: (context, index) {
+                final part = parts[index];
+                final answers = partAnswers[part['id']] ?? [];
 
-              return PartWidget(
-                part: part,
-                answers: answers,
-                userAnswers: userAnswers[part['id']] ?? {},
-                onAnswerChanged: (questionNumber, answer) {
-                  setState(() {
-                    userAnswers.putIfAbsent(part['id'], () => {}); // Đảm bảo có Map rỗng trước
-                    userAnswers[part['id']]![questionNumber] = answer;
-                  });
-                },
-
-              );
-            },
-          ),
-          Positioned(
-            top: 10,
-            right: 10,
-            child: Chip(
-              label: Text('Time: ${_formatTime(elapsedTime)}', style: TextStyle(fontSize: 16)),
-              backgroundColor: Colors.blueAccent,
+                return PartWidget(
+                  part: part,
+                  answers: answers,
+                  userAnswers: userAnswers[part['id']] ?? {},
+                  onAnswerChanged: (questionNumber, answer) {
+                    setState(() {
+                      userAnswers.putIfAbsent(part['id'], () => {});
+                      userAnswers[part['id']]![questionNumber] = answer;
+                    });
+                  },
+                );
+              },
             ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Chip(
+                label: Text('Time: ${_formatTime(elapsedTime)}',
+                    style: TextStyle(fontSize: 16)),
+                backgroundColor: Colors.blueAccent,
+              ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.all(10),
+          child: ElevatedButton(
+            onPressed: _submitAnswers,
+            child: const Text('Submit Answers'),
           ),
-        ],
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(10),
-        child: ElevatedButton(
-          onPressed: _submitAnswers,
-          child: const Text('Submit Answers'),
         ),
       ),
     );
   }
+
+  Future<bool> _showExitConfirmation() async {
+    return await showDialog(
+      context: context,
+      builder: (context) =>
+          AlertDialog(
+            title: const Text('Exit Test?'),
+            content: const Text(
+                'Are you sure you want to exit? Your progress will not be saved.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                // Không thoát
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true), // Thoát
+                child: const Text('Exit'),
+              ),
+            ],
+          ),
+    ) ??
+        false; // Mặc định không thoát nếu không chọn gì
+  }
 }
 
-class PartWidget extends StatelessWidget {
+  class PartWidget extends StatelessWidget {
   final Map<String, dynamic> part;
   final List<Map<String, dynamic>> answers;
   final Map<int, String> userAnswers;

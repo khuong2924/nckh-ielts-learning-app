@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:auth/presentation/pages/account-management/signin.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
@@ -18,9 +19,14 @@ class _HomeLoad extends State<HomeLoad> {
 
   void _signOut() async {
     await FirebaseAuth.instance.signOut();
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_logged_in', false);
+    await prefs.remove('user_id');
+
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const SigninPage()), // Chuyển về trang đăng nhập
+      MaterialPageRoute(builder: (context) => const SigninPage()), // Quay về trang đăng nhập
     );
   }
 

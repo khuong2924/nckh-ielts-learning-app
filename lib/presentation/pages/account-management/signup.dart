@@ -43,7 +43,7 @@ class _SignupPageState extends State<SignupPage> {
             if (state is ButtonSuccessState) {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => const HomeLoad()),
+                MaterialPageRoute(builder: (context) => const SigninPage()),
               );
             }
             if (state is ButtonFailureState) {

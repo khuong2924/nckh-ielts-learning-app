@@ -124,48 +124,51 @@ class _SigninPageState extends State<SigninPage> {
       builder: (context) {
         return BasicAppButton(
           title: 'Login',
-          onPressed: () async {
-            String email = _emailCon.text.trim();
-            String password = _passwordCon.text;
+            onPressed: () async {
+              String email = _emailCon.text.trim();
+              String password = _passwordCon.text;
 
-            if (email.isEmpty || !email.contains('@')) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please enter a valid email.')),
-              );
-              return;
-            }
-            if (password.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Password cannot be empty.')),
-              );
-              return;
-            }
-
-            // Trigger login logic using Firebase Authentication
-            try {
-              UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-                email: email,
-                password: password,
-              );
-
-              // Nếu đăng nhập thành công, cập nhật trạng thái của ButtonStateCubit
-              context.read<ButtonStateCubit>().emit(ButtonSuccessState());
-
-              // Lưu userId vào SharedPreferences
-              String userId = userCredential.user?.uid ?? '';
-              SharedPreferences prefs = await SharedPreferences.getInstance();
-              await prefs.setString('user_id', userId);
-
-            } on FirebaseAuthException catch (e) {
-              String errorMessage = 'An error occurred';
-              if (e.code == 'user-not-found') {
-                errorMessage = 'No user found for that email.';
-              } else if (e.code == 'wrong-password') {
-                errorMessage = 'Wrong password provided for that user.';
+              if (email.isEmpty || !email.contains('@')) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a valid email.')),
+                );
+                return;
               }
-              context.read<ButtonStateCubit>().emit(ButtonFailureState(errorMessage: errorMessage));
+              if (password.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Password cannot be empty.')),
+                );
+                return;
+              }
+
+              try {
+                UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+                  email: email,
+                  password: password,
+                );
+
+                // Nếu đăng nhập thành công, lưu trạng thái đăng nhập
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('is_logged_in', true);
+                await prefs.setString('user_id', userCredential.user?.uid ?? '');
+
+                // Chuyển đến HomeLoad
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HomeLoad()),
+                );
+              } on FirebaseAuthException catch (e) {
+                String errorMessage = 'An error occurred';
+                if (e.code == 'user-not-found') {
+                  errorMessage = 'No user found for that email.';
+                } else if (e.code == 'wrong-password') {
+                  errorMessage = 'Wrong password provided for that user.';
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(errorMessage)),
+                );
+              }
             }
-          },
         );
       },
     );

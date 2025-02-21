@@ -85,45 +85,73 @@ class _WritingPageState extends State<WritingPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Writing Test')),
-      body: Stack(
-        children: [
-          isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-            itemCount: parts.length,
-            itemBuilder: (context, index) {
-              final part = parts[index];
-              return PartWidget(
-                part: part,
-                userAnswer: userAnswers[part['id']] ?? '',
-                onAnswerChanged: (answer) {
-                  setState(() {
-                    userAnswers[part['id']] = answer;
-                  });
-                },
-              );
-            },
-          ),
-          Positioned(
-            top: 10,
-            right: 10,
-            child: Chip(
-              label: Text('Time: ${_formatTime(elapsedTime)}', style: TextStyle(fontSize: 16)),
-              backgroundColor: Colors.blueAccent,
+    return WillPopScope(
+      onWillPop: () async {
+        bool shouldExit = await _showExitConfirmation();
+        return shouldExit;
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Writing Test')),
+        body: Stack(
+          children: [
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+              itemCount: parts.length,
+              itemBuilder: (context, index) {
+                final part = parts[index];
+                return PartWidget(
+                  part: part,
+                  userAnswer: userAnswers[part['id']] ?? '',
+                  onAnswerChanged: (answer) {
+                    setState(() {
+                      userAnswers[part['id']] = answer;
+                    });
+                  },
+                );
+              },
             ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Chip(
+                label: Text('Time: ${_formatTime(elapsedTime)}', style: TextStyle(fontSize: 16)),
+                backgroundColor: Colors.blueAccent,
+              ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.all(10),
+          child: ElevatedButton(
+            onPressed: _submitAnswers,
+            child: const Text('Submit Answers'),
           ),
-        ],
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(10),
-        child: ElevatedButton(
-          onPressed: _submitAnswers,
-          child: const Text('Submit Answers'),
         ),
       ),
     );
+  }
+  Future<bool> _showExitConfirmation() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit Test?'),
+        content: const Text('Are you sure you want to exit? Your progress will not be saved.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false), // Không thoát
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              _timer?.cancel(); // Dừng đồng hồ đếm giờ
+              Navigator.of(context).pop(true); // Cho phép thoát
+            },
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    ) ?? false; // Mặc định là không thoát nếu hộp thoại bị đóng
   }
 }
 
