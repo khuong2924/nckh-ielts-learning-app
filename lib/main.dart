@@ -1,4 +1,6 @@
 import 'package:auth/presentation/pages/flashcard/flashcard-done-result.dart';
+import 'package:auth/presentation/pages/flashcard/flashcard-home.dart';
+import 'package:auth/presentation/pages/flashcard/flashcard-learning.dart';
 import 'package:auth/presentation/pages/flashcard/vocabulary-main.dart';
 import 'package:auth/presentation/pages/reading/reading-home.dart';
 import 'package:flutter/material.dart';
@@ -39,7 +41,7 @@ class MyApp extends StatelessWidget {
       ),
       debugShowCheckedModeBanner: false,
 
-      home: SplashScreen(), // Để lại SigninPage như cũ
+      home: FlashcardHome(), // Để lại SigninPage như cũ
     );
   }
 }
