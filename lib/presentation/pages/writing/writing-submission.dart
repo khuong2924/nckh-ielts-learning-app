@@ -1,107 +1,186 @@
+import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/material.dart';
+
+const String apiUrl = "https://api.mistral.ai/v1/chat/completions";
+const String apiKey = "3MVsD1vcXAOTl1qjDx42z2wpLS2KUDvc";
 
 class IeltsFeedbackPage extends StatefulWidget {
-  final String userInput;
+  final List<Map<String, String>> submissions;
 
-  const IeltsFeedbackPage({super.key, required this.userInput});
+  const IeltsFeedbackPage({Key? key, required this.submissions}) : super(key: key);
 
   @override
-  State<IeltsFeedbackPage> createState() => _IeltsFeedbackPageState();
+  _IeltsFeedbackScreenState createState() => _IeltsFeedbackScreenState();
 }
 
-class _IeltsFeedbackPageState extends State<IeltsFeedbackPage> {
+class _IeltsFeedbackScreenState extends State<IeltsFeedbackPage> {
+  double? ieltsScore;
+  List<String> grammarSuggestions = [];
+  String summary = "";
+  String overallFeedback = "";
   bool isLoading = true;
-  String score = "N/A";
-  String grammarSuggestions = "Không có gợi ý";
-  String summary = "Không có tóm tắt";
-  String feedback = "Không có phản hồi";
+  String errorMessage = "";
 
   @override
   void initState() {
     super.initState();
-    fetchIeltsFeedback(widget.userInput);
+    fetchIeltsFeedback();
   }
 
-  Future<void> fetchIeltsFeedback(String userInput) async {
-    const String apiUrl = "https://api.mistral.ai/v1/chat/completions";
-    const String apiKey = "3MVsD1vcXAOTl1qjDx42z2wpLS2KUDvc"; // Thay bằng API Key thật
-
-    final Map<String, dynamic> requestBody = {
-      "model": "mistral-medium", // Thử "mistral-medium" nếu cần
-      "messages": [
-        {"role": "system", "content": "Bạn là giám khảo IELTS. Hãy chấm điểm bài viết."},
-        {"role": "user", "content": userInput}
-      ],
-      "temperature": 0.7
-    };
-
+  Future<void> fetchIeltsFeedback() async {
     try {
+      // 📝 Tạo nội dung gửi lên API Mistral
+      String userPrompt = '''
+      I am submitting two IELTS writing tasks. Please analyze both essays **together** and provide:
+      - **One overall IELTS Writing Band Score** (considering both essays).
+      - Grammar suggestions.
+      - Summary of both essays.
+      - Overall feedback.
+
+    ### Essay 1:
+    Task: ${widget.submissions[0]['task_description']}
+    Answer: ${widget.submissions[0]['user_answer']}
+
+    ### Essay 2:
+    Task: ${widget.submissions[1]['task_description']}
+    Answer: ${widget.submissions[1]['user_answer']}
+    ''';
+      for (var essay in widget.submissions) {
+        if (essay['user_answer']!.length < 10) {
+          print("Warning: One of the essays is too short and may not be analyzed properly.");
+        }
+      }
+
+      // 🛠 Sửa lỗi JSON request
+      final Map<String, dynamic> requestBody = {
+        "model": "mistral-medium", // ✅ Kiểm tra lại model hợp lệ
+        "messages": [
+          {"role": "system", "content": "You are an IELTS examiner. Evaluate the following essay."},
+          {"role": "user", "content": userPrompt}
+        ],
+        "temperature": 0.7
+      };
+
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {
-          "Authorization": "Bearer $apiKey",
           "Content-Type": "application/json",
+          "Authorization": "Bearer $apiKey",
         },
-        body: jsonEncode(requestBody),
+        body: jsonEncode(requestBody), // ✅ Đảm bảo JSON đúng
       );
 
       print("📢 API Status Code: ${response.statusCode}");
       print("🔥 API Response: ${response.body}");
 
       if (response.statusCode == 200) {
-        try {
-          final Map<String, dynamic> responseData = jsonDecode(response.body);
-          final String aiFeedback = responseData["choices"][0]["message"]["content"];
+        final data = jsonDecode(response.body);
+        String aiResponse = data['choices'][0]['message']['content'] ?? "";
 
-          setState(() {
-            score = "Đang cập nhật..."; // Có thể lấy từ AI nếu cần
-            feedback = aiFeedback;
-          });
-        } catch (e) {
-          setState(() {
-            feedback = "❌ Lỗi khi parse JSON: $e";
-          });
-        }
+        RegExp scoreRegex = RegExp(
+            r"overall IELTS Writing Band Score[:\s]*([\d.]+)",
+            caseSensitive: false
+        );
+
+        RegExp feedbackRegex = RegExp(
+            r"Overall feedback:\s*(.*?)(?=(Grammar suggestions|$))",
+            caseSensitive: false,
+            dotAll: true
+        );
+
+        RegExp summaryRegex = RegExp(
+            r"Summary of both essays:\s*(.*?)(?=(Overall feedback|Grammar suggestions|$))",
+            caseSensitive: false,
+            dotAll: true
+        );
+
+        RegExp grammarRegex = RegExp(
+            r"Grammar suggestions:\s*(.*?)(?=(Summary of both essays|$))",
+            caseSensitive: false,
+            dotAll: true
+        );
+
+
+
+        setState(() {
+          ieltsScore = double.tryParse(scoreRegex.firstMatch(aiResponse)?.group(1) ?? "") ?? null;
+          grammarSuggestions = grammarRegex.firstMatch(aiResponse)?.group(1)?.split("\n") ?? [];
+          summary = summaryRegex.firstMatch(aiResponse)?.group(1) ?? "No summary available.";
+          overallFeedback = feedbackRegex.firstMatch(aiResponse)?.group(1) ?? "No feedback available.";
+          isLoading = false;
+        });
       } else {
         setState(() {
-          feedback = "❌ Lỗi API: ${response.statusCode} - ${response.body}";
+          isLoading = false;
+          errorMessage = "❌ API Error: ${response.statusCode} - ${response.body}";
         });
       }
-    } catch (error) {
-      setState(() {
-        feedback = "⚠️ Lỗi khi gọi API: $error";
-      });
-    } finally {
+    } catch (e) {
       setState(() {
         isLoading = false;
+        errorMessage = "⚠️ Exception: ${e.toString()}";
       });
     }
+  }
+
+
+  Widget _buildSection(String title, String content, IconData icon, Color color) {
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              leading: Icon(icon, color: color),
+              title: Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+            ),
+            Divider(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(content, style: TextStyle(fontSize: 16)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGrammarSection() {
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: ExpansionTile(
+        leading: Icon(Icons.spellcheck, color: Colors.orange),
+        title: Text("Grammar Suggestions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
+        children: grammarSuggestions.isNotEmpty
+            ? grammarSuggestions.map((suggestion) => ListTile(title: Text(suggestion))).toList()
+            : [Padding(padding: EdgeInsets.all(16), child: Text("No suggestions"))],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Kết quả chấm bài")),
+      appBar: AppBar(title: Text('IELTS Feedback')),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            Text("📝 Điểm IELTS: $score",
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Text("📌 Gợi ý sửa lỗi:\n$grammarSuggestions",
-                style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 10),
-            Text("📖 Tóm tắt bài viết:\n$summary", style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 10),
-            Text("💡 Phản hồi:\n$feedback",
-                style: const TextStyle(fontSize: 16, fontStyle: FontStyle.italic)),
-          ],
-        ),
+          ? Center(child: CircularProgressIndicator())
+          : errorMessage.isNotEmpty
+          ? Center(child: Text(errorMessage, style: TextStyle(color: Colors.red, fontSize: 16)))
+          : ListView(
+        children: [
+          _buildSection(
+            "IELTS Score",
+            ieltsScore != null ? ieltsScore.toString() : "Not determined",
+            Icons.score,
+            Colors.blue,
+          ),
+          _buildGrammarSection(),
+          _buildSection("Essay Summary", summary, Icons.book, Colors.green),
+          _buildSection("Overall Feedback", overallFeedback, Icons.feedback, Colors.purple),
+        ],
       ),
     );
   }
