@@ -13,6 +13,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_svg: ^1.0.3
+  fl_chart: ^0.70.2
   firebase_core:
   firebase_auth:
   flutter_tts: ^3.7.0
@@ -27,6 +28,8 @@ dependencies:
   dartz:
   logger:
   shared_preferences:
+  flutter_calendar_carousel: ^2.4.4
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
