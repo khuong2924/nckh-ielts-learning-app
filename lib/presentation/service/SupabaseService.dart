@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SupabaseService {
   final supabase = Supabase.instance.client;
 
-  /// Lấy danh sách bài test
   Future<List<Map<String, dynamic>>> fetchTests() async {
     final response = await supabase.from('tests').select();
 
@@ -15,7 +14,7 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  /// Thêm bài test mới
+
   Future<void> addTest(Map<String, dynamic> test) async {
     final response = await supabase.from('tests').insert(test);
 
@@ -23,8 +22,6 @@ class SupabaseService {
       throw Exception('Error adding test: No data returned.');
     }
   }
-
-  /// Lấy danh sách các phần (parts) theo `test_id`
   Future<List<Map<String, dynamic>>> fetchPartsByTestId(int testId) async {
     try {
       final response = await supabase
