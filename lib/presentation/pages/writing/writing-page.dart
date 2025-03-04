@@ -23,59 +23,69 @@ class _WritingPageState extends State<WritingPage> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _initializePage();
+  }
+
+  Future<void> _initializePage() async {
+    await _loadUserId();
+    await _fetchParts();
     _startTimer();
   }
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        elapsedTime++;
-      });
-    });
+  Future<void> _loadUserId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    userId = prefs.getString('user_id') ?? '';
   }
 
-  Future<void> _loadData() async {
+  Future<void> _fetchParts() async {
     try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      userId = prefs.getString('user_id') ?? '';
-
-      final partsResponse = await Supabase.instance.client
+      final response = await Supabase.instance.client
           .from('listening_parts')
           .select()
           .eq('test_id', widget.testId)
           .order('id', ascending: true);
 
       setState(() {
-        parts = List<Map<String, dynamic>>.from(partsResponse as List);
+        parts = List<Map<String, dynamic>>.from(response);
         isLoading = false;
       });
+
+      if (parts.length != 2) {
+        _showSnackBar('Error: The test must have exactly two tasks.');
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading data: $e')),
-      );
+      _showSnackBar('Error loading data: $e');
     }
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() => elapsedTime++);
+    });
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _submitAnswers() async {
-    if (userAnswers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please answer all questions before submitting.')),
-      );
+    if (userAnswers.length < 2) {
+      _showSnackBar('Please complete both tasks before submitting.');
       return;
     }
 
-    String essayText = userAnswers.values.join("\n\n"); // Gộp toàn bộ bài viết
+    List<Map<String, String>> submissions = parts.map((part) {
+      return {
+        "task_description": part['part_description'].toString(), // Ensure it's a String
+        "user_answer": userAnswers[part['id']]?.toString() ?? '' // Ensure it's a String
+      };
+    }).toList();
 
-    // Chuyển sang trang chấm bài WritingResultPage
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => IeltsFeedbackPage(userInput: essayText),
-      ),
+      MaterialPageRoute(builder: (context) => IeltsFeedbackPage(submissions: submissions)),
     );
   }
-
 
   String _formatTime(int seconds) {
     final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
@@ -83,13 +93,30 @@ class _WritingPageState extends State<WritingPage> {
     return '$minutes:$secs';
   }
 
+  Future<bool> _showExitConfirmation() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit Test?'),
+        content: const Text('Are you sure you want to exit? Your progress will not be saved.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              _timer?.cancel();
+              Navigator.of(context).pop(true);
+            },
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async {
-        bool shouldExit = await _showExitConfirmation();
-        return shouldExit;
-      },
+      onWillPop: _showExitConfirmation,
       child: Scaffold(
         appBar: AppBar(title: const Text('Writing Test')),
         body: Stack(
@@ -104,9 +131,7 @@ class _WritingPageState extends State<WritingPage> {
                   part: part,
                   userAnswer: userAnswers[part['id']] ?? '',
                   onAnswerChanged: (answer) {
-                    setState(() {
-                      userAnswers[part['id']] = answer;
-                    });
+                    setState(() => userAnswers[part['id']] = answer);
                   },
                 );
               },
@@ -115,7 +140,7 @@ class _WritingPageState extends State<WritingPage> {
               top: 10,
               right: 10,
               child: Chip(
-                label: Text('Time: ${_formatTime(elapsedTime)}', style: TextStyle(fontSize: 16)),
+                label: Text('Time: ${_formatTime(elapsedTime)}', style: const TextStyle(fontSize: 16)),
                 backgroundColor: Colors.blueAccent,
               ),
             ),
@@ -123,56 +148,41 @@ class _WritingPageState extends State<WritingPage> {
         ),
         bottomNavigationBar: Padding(
           padding: const EdgeInsets.all(10),
-          child: ElevatedButton(
-            onPressed: _submitAnswers,
-            child: const Text('Submit Answers'),
-          ),
+          child: ElevatedButton(onPressed: _submitAnswers, child: const Text('Submit Answers')),
         ),
       ),
     );
   }
-  Future<bool> _showExitConfirmation() async {
-    return await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Exit Test?'),
-        content: const Text('Are you sure you want to exit? Your progress will not be saved.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false), // Không thoát
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              _timer?.cancel(); // Dừng đồng hồ đếm giờ
-              Navigator.of(context).pop(true); // Cho phép thoát
-            },
-            child: const Text('Exit'),
-          ),
-        ],
-      ),
-    ) ?? false; // Mặc định là không thoát nếu hộp thoại bị đóng
-  }
 }
 
-class PartWidget extends StatelessWidget {
+class PartWidget extends StatefulWidget {
   final Map<String, dynamic> part;
   final String userAnswer;
   final Function(String) onAnswerChanged;
 
-  const PartWidget({
-    Key? key,
-    required this.part,
-    required this.userAnswer,
-    required this.onAnswerChanged,
-  }) : super(key: key);
+  const PartWidget({Key? key, required this.part, required this.userAnswer, required this.onAnswerChanged}) : super(key: key);
+
+  @override
+  _PartWidgetState createState() => _PartWidgetState();
+}
+
+class _PartWidgetState extends State<PartWidget> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.userAnswer);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    String partTitle = part['part_title'] ?? 'Untitled Part';
-    String partDescription = part['part_description'] ?? 'No description';
-    String? imageUrl = part['image_url'];
-
     return Card(
       margin: const EdgeInsets.all(10),
       child: Padding(
@@ -181,34 +191,20 @@ class PartWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              partTitle,
+              widget.part['part_title'] ?? 'Untitled Part',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-
-            if (imageUrl != null && imageUrl.isNotEmpty)
-              Image.network(imageUrl, height: 200, fit: BoxFit.cover),
-
+            if (widget.part['image_url']?.isNotEmpty ?? false)
+              Image.network(widget.part['image_url'], height: 200, fit: BoxFit.cover),
             const SizedBox(height: 10),
-            Text(partDescription),
-
+            Text(widget.part['part_description'] ?? 'No description'),
             const SizedBox(height: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Your Answer:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 5),
-                TextField(
-                  onChanged: onAnswerChanged,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
-                ),
-              ],
+            TextField(
+              controller: _controller,
+              onChanged: widget.onAnswerChanged,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              maxLines: 3,
             ),
           ],
         ),
