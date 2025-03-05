@@ -9,8 +9,7 @@ import 'package:auth/presentation/pages/reading/reading-done.dart';
 import 'package:auth/presentation/pages/main-page/home-page.dart';
 import 'package:auth/presentation/pages/account-management/splash_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase package
-import 'package:auth/presentation/pages/friends-page/connect-friends-page.dart';
-import 'package:auth/presentation/pages/friends-page/list-friends-page.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -21,7 +20,7 @@ Future<void> main() async {
 
   // Khởi tạo Supabase
   await Supabase.initialize(
-    url: 'https://ojjtdegibiythbrqhdkg.supabase.co',
+    url: 'https://ojjtdegibiythbrqhdkg.supabase.co', // Thay bằng URL của bạn
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qanRkZWdpYml5dGhicnFoZGtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzNjA0MTAsImV4cCI6MjA1MTkzNjQxMH0.bkQUcjjlb7tBOokl0yWX01z4tz1A7DDS3DryVu_6HnI', // Thay bằng anon key của bạn
   );
 
@@ -40,7 +39,7 @@ class MyApp extends StatelessWidget {
       ),
       debugShowCheckedModeBanner: false,
 
-      home: SigninPage(),
+      home: SplashScreen(), // Để lại SigninPage như cũ
     );
   }
 }
