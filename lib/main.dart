@@ -8,6 +8,7 @@ import 'package:auth/presentation/pages/account-management/signin.dart';
 import 'package:auth/presentation/pages/reading/reading-done.dart';
 import 'package:auth/presentation/pages/main-page/home-page.dart';
 import 'package:auth/presentation/pages/account-management/splash_screen.dart';
+import 'package:auth/presentation/pages/statistical/statistical.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase package
 
 Future<void> main() async {
@@ -38,7 +39,6 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-
       home: SplashScreen(), // Để lại SigninPage như cũ
     );
   }
