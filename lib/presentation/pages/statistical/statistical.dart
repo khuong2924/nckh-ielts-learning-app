@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Statistical extends StatefulWidget {
   const Statistical({super.key});
@@ -14,6 +15,50 @@ class _StatisticalState extends State<Statistical> {
   int _currentIndex = 0;
   DateTime? _beginDate;
   DateTime? _endDate;
+  final supabase = Supabase.instance.client;
+  int totalTests = 0;
+  int totalTime = 0;
+
+  Future<void> fetchStatistics({DateTime? startDate, DateTime? endDate}) async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        print('User not logged in');
+        return;
+      }
+      final userId = user.id; // Lấy ID của người đăng nhập
+
+      final now = DateTime.now();
+      final defaultStartDate = DateTime(now.year, now.month - 1, now.day);
+
+      final response = await supabase
+          .from('test_results')
+          .select('completed_at, time')
+          .eq('user_id', userId) // Chỉ lấy dữ liệu của user đang đăng nhập
+          .gte(
+              'completed_at', (startDate ?? defaultStartDate).toIso8601String())
+          .lte('completed_at', (endDate ?? now).toIso8601String());
+
+      if (response.isNotEmpty) {
+        setState(() {
+          totalTests = response.length;
+          totalTime =
+              response.fold(0, (sum, item) => sum + (item['time'] as int));
+        });
+      }
+    } catch (error) {
+      print('Lỗi khi lấy dữ liệu: $error');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _beginDate = DateTime(now.year, now.month - 1, now.day);
+    _endDate = now;
+    fetchStatistics(startDate: _beginDate, endDate: _endDate);
+  }
 
   Future<void> _selectDate(BuildContext context, bool isBegin) async {
     DateTime? picked = await showDatePicker(
@@ -29,6 +74,7 @@ class _StatisticalState extends State<Statistical> {
         } else {
           _endDate = picked;
         }
+        fetchStatistics(startDate: _beginDate, endDate: _endDate);
       });
     }
   }
@@ -67,9 +113,9 @@ class _StatisticalState extends State<Statistical> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _infoCard("Total Number Tests", "30 Tests"),
+                          _infoCard("Total Number Tests", "$totalTests Tests"),
                           const SizedBox(width: 10),
-                          _infoCard("Total Study Time", "30 hours 15 minutes"),
+                          _infoCard("Total Study Time", "$totalTime minutes"),
                         ],
                       ),
                       const SizedBox(height: 30),
