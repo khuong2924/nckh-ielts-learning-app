@@ -32,20 +32,30 @@ class _IeltsFeedbackScreenState extends State<IeltsFeedbackPage> {
     try {
       // 📝 Tạo nội dung gửi lên API Mistral
       String userPrompt = '''
-      I am submitting two IELTS writing tasks. Please analyze both essays **together** and provide:
-      - **One overall IELTS Writing Band Score** (considering both essays).
-      - Grammar suggestions.
-      - Summary of both essays.
-      - Overall feedback.
+      You are an IELTS examiner. Please analyze the following two IELTS Writing Task responses and provide structured feedback. Your response should strictly follow this format:
+      ---
+**Overall IELTS Writing Band Score:** (Provide a single band score considering both essays, knowing those are two different tasks for an IELTS Writing Test.)
 
-    ### Essay 1:
-    Task: ${widget.submissions[0]['task_description']}
-    Answer: ${widget.submissions[0]['user_answer']}
+**Grammar Suggestions:**  
+(List the grammar mistakes for each essay separately.)
 
-    ### Essay 2:
-    Task: ${widget.submissions[1]['task_description']}
-    Answer: ${widget.submissions[1]['user_answer']}
-    ''';
+**Summary of Both Essays:**  
+(Summarize both essays in 2-3 sentences each.)
+
+**Overall Feedback:**  
+(Give an overall evaluation of the writing, including strengths and areas for improvement.)
+---
+
+### Essay 1:
+Task: {Insert Task 1 description here}  
+Answer: {Insert Task 1 response here}
+
+### Essay 2:
+Task: {Insert Task 2 description here}  
+Answer: {Insert Task 2 response here}
+
+Please ensure that each section is clearly labeled as shown in the format above.
+''';
       for (var essay in widget.submissions) {
         if (essay['user_answer']!.length < 10) {
           print("Warning: One of the essays is too short and may not be analyzed properly.");
@@ -96,7 +106,7 @@ class _IeltsFeedbackScreenState extends State<IeltsFeedbackPage> {
         );
 
         RegExp grammarRegex = RegExp(
-            r"Grammar suggestions:\s*(.*?)(?=(Summary of both essays|$))",
+            r"Grammar suggestions:\s*(.*?)(?=(Summary|$))",
             caseSensitive: false,
             dotAll: true
         );
