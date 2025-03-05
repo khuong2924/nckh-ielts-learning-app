@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ConnectFriendPage extends StatefulWidget {
   const ConnectFriendPage({super.key});
@@ -11,6 +13,158 @@ class ConnectFriendPage extends StatefulWidget {
 
 class _ConnectFriendPageState extends State<ConnectFriendPage> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  List<Map<String, dynamic>> _users = [];
+  List<Map<String, dynamic>> _friendRequests = [];
+  bool _isSearching = false;
+  Widget _buildFriendRequests() {
+    return _friendRequests.isEmpty
+        ? const Center(child: Text('No friend requests'))
+        : ListView.builder(
+      itemCount: _friendRequests.length,
+      itemBuilder: (_, index) {
+        final request = _friendRequests[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundImage: request['avatar'].isNotEmpty
+                  ? NetworkImage(request['avatar'])
+                  : const AssetImage('assets/default_avatar.png') as ImageProvider,
+              radius: 25,
+            ),
+            title: Text(request['username'], style: const TextStyle(fontWeight: FontWeight.bold)),
+            trailing: ElevatedButton(
+              onPressed: () => _acceptFriendRequest(request['id'], request['sender_id']),
+              child: const Text("Accept"),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchFriendRequests();
+  }
+
+  Future<String?> getCurrentUserId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_id');
+  }
+
+  Future<void> _fetchFriendRequests() async {
+    String? currentUserId = await getCurrentUserId();
+    if (currentUserId == null) return;
+
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('friend_requests')
+          .where('receiver_id', isEqualTo: currentUserId)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      List<Map<String, dynamic>> friendRequests = [];
+
+      for (var doc in querySnapshot.docs) {
+        String senderId = doc['sender_id'];
+
+        DocumentSnapshot senderSnapshot =
+        await FirebaseFirestore.instance.collection('users').doc(senderId).get();
+
+        if (senderSnapshot.exists) {
+          final senderData = senderSnapshot.data() as Map<String, dynamic>;
+          friendRequests.add({
+            'id': doc.id,
+            'sender_id': senderId,
+            'username': senderData['username'] ?? 'Unknown',
+            'avatar': senderData['avatar'] ?? '',
+          });
+        }
+      }
+
+      setState(() {
+        _friendRequests = friendRequests;
+      });
+    } catch (e) {
+      print("Error fetching friend requests: $e");
+    }
+  }
+
+  Future<void> _fetchUsers(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _users = [];
+      });
+      return;
+    }
+
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('username', isGreaterThanOrEqualTo: query)
+          .where('username', isLessThan: query + '\uf8ff')
+          .get();
+
+      List<Map<String, dynamic>> users = querySnapshot.docs
+          .map((doc) => {
+        'id': doc.id,
+        'username': doc['username'] ?? 'Unknown',
+        'avatar': doc['avatar'] ?? '',
+      })
+          .toList();
+
+      setState(() {
+        _users = users;
+      });
+    } catch (e) {
+      print("Error searching users: $e");
+    }
+  }
+
+  Future<void> _sendFriendRequest(String receiverId) async {
+    String? currentUserId = await getCurrentUserId();
+    if (currentUserId == null) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('friend_requests').add({
+        'sender_id': currentUserId,
+        'receiver_id': receiverId,
+        'status': 'pending',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      print("Friend request sent to $receiverId!");
+    } catch (e) {
+      print("Error sending friend request: $e");
+    }
+  }
+
+  Future<void> _acceptFriendRequest(String requestId, String senderId) async {
+    String? currentUserId = await getCurrentUserId();
+    if (currentUserId == null) return;
+
+    try {
+      // Remove the friend request
+      await FirebaseFirestore.instance.collection('friend_requests').doc(requestId).delete();
+
+      // Add to both users' friend lists
+      await FirebaseFirestore.instance.collection('users').doc(currentUserId).update({
+        'friend_list': FieldValue.arrayUnion([senderId])
+      });
+
+      await FirebaseFirestore.instance.collection('users').doc(senderId).update({
+        'friend_list': FieldValue.arrayUnion([currentUserId])
+      });
+
+      print("Accepted friend request from $senderId!");
+      _fetchFriendRequests(); // Refresh UI after accepting
+    } catch (e) {
+      print("Error accepting friend request: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,18 +193,13 @@ class _ConnectFriendPageState extends State<ConnectFriendPage> {
                       _buildSearchBar(),
                       const SizedBox(height: 20),
                       Expanded(
-                        child: _buildUserList(),
+                        child: _isSearching ? _buildUserList() : _buildFriendRequests(),
                       ),
                     ],
                   ),
                 ),
               ),
-              BottomNavBar(
-                currentIndex: 3,
-                onTap: (index) {
-                  // Handle navigation
-                },
-              ),
+              BottomNavBar(currentIndex: 3, onTap: (index) {}),
             ],
           ),
         ),
@@ -60,7 +209,7 @@ class _ConnectFriendPageState extends State<ConnectFriendPage> {
 
   Widget _buildTitle() {
     return const Text(
-      'Connect Friend',
+      'Connect with Friends',
       style: TextStyle(
         color: Color(0xFF202244),
         fontSize: 21,
@@ -76,50 +225,25 @@ class _ConnectFriendPageState extends State<ConnectFriendPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x19000000),
-            blurRadius: 12,
-            offset: Offset(0, 3),
-          ),
-        ],
+        boxShadow: const [BoxShadow(color: Color(0x19000000), blurRadius: 12, offset: Offset(0, 3))],
       ),
       child: Row(
         children: [
-          const SizedBox(width: 42),
+          const SizedBox(width: 12),
           Expanded(
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Search id người dùng',
-                hintStyle: TextStyle(
-                  color: Color(0xFFB4BDC4),
-                  fontSize: 16,
-                  fontFamily: 'Mulish',
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          Container(
-            width: 38,
-            height: 38,
-            margin: const EdgeInsets.only(right: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0961F5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: IconButton(
-              icon: const Icon(
-                Icons.search,
-                color: Colors.white,
-                size: 20,
-              ),
-              onPressed: () {
-                // Handle search
+              focusNode: _searchFocusNode,
+              decoration: const InputDecoration(border: InputBorder.none, hintText: 'Search user ID or username'),
+              onChanged: (value) {
+                setState(() => _isSearching = value.isNotEmpty);
+                _fetchUsers(value);
               },
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.blue),
+            onPressed: () => _fetchUsers(_searchController.text),
           ),
         ],
       ),
@@ -127,107 +251,30 @@ class _ConnectFriendPageState extends State<ConnectFriendPage> {
   }
 
   Widget _buildUserList() {
-    return ListView.separated(
-      itemCount: 5, // số lượng user
-      separatorBuilder: (context, index) => const Divider(
-        color: Color(0xFFB4BDC4),
-        thickness: 1,
-      ),
-      itemBuilder: (context, index) {
-        return _buildUserItem();
-      },
+    return _users.isEmpty
+        ? const Center(child: Text('No users found'))
+        : ListView.builder(
+      itemCount: _users.length,
+      itemBuilder: (_, index) => _buildUserItem(_users[index]),
     );
   }
 
-  Widget _buildUserItem() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Stack(
-            children: [
-              Container(
-                width: 50,
-                height: 48,
-                decoration: ShapeDecoration(
-                  shape: OvalBorder(
-                    side: BorderSide(width: 1, color: Color(0xFF0067AC)),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 7,
-                top: 6,
-                child: Container(
-                  width: 36,
-                  height: 37,
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: NetworkImage(
-                        "https://s3-alpha-sig.figma.com/img/b1d3/043c/8ead60558de8c20583a7767f336f70e5?Expires=1737331200&Key-Pair-Id=APKAQ4GOSFWCVNEHN3O4&Signature=QpXFa64c9QjJEFyUsh8dwUPd7NJJUvHUxBACidz8DAolk5aBXEcn3dXfRV1pVjze~fFjL63gfbictTfcIndxMzgh-7jomOch92jCfz3myeDh~OEXU7tv7xtaUko7zwxbyZHUWxh2oH1Jz4lb2hnFtJQLi63UdHqiXEK~y5OQOUjzh2c4KYsai9~kSrnxNFLA2Bq-qZkLpJF6lV5ipJbvZUBi~VTLsHHIWE~3M-EwMAIVHiQTqBx4gRMySat9svY1EwEIPh7s8-O49xDW4yLlL5Czml~M9E0U25kiwpdj0~TwECwJ9yy3a-8ES0V5qHT-UxUmf-L2rC6xED19MOFOJw__"),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'User A',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 12,
-                  fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                'ID: 2408',
-                style: TextStyle(
-                  color: Color(0xFF0067AC),
-                  fontSize: 9,
-                  fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                'Bank: 8.0',
-                style: TextStyle(
-                  color: Color(0xFF0067AC),
-                  fontSize: 9,
-                  fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          TextButton(
-            onPressed: () {
-              // Handle add friend
-            },
-            child: Text(
-              'Add friend',
-              style: TextStyle(
-                color: Color(0xFF0067AC),
-                fontSize: 12,
-                fontFamily: 'Montserrat',
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
+  Widget _buildUserItem(Map<String, dynamic> user) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundImage: user['avatar'].isNotEmpty
+              ? NetworkImage(user['avatar'])
+              : const AssetImage('assets/default_avatar.png') as ImageProvider,
+          radius: 25,
+        ),
+        title: Text(user['username'], style: const TextStyle(fontWeight: FontWeight.bold)),
+        trailing: ElevatedButton(
+          onPressed: () => _sendFriendRequest(user['id']),
+          child: const Text("Add Friend"),
+        ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 }

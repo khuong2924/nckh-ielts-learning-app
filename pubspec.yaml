@@ -49,8 +49,6 @@ flutter:
     - lib/icons/ic-add.png
     - lib/icons/ic-audio.png
     - lib/icons/ic-back.svg
-
-
     - lib/images/devicon_google.svg
     - lib/images/logos_facebook.svg
     - lib/images/logos_twitter.svg
