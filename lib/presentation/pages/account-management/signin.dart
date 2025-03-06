@@ -1,4 +1,3 @@
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:auth/common/bloc/button/button_state.dart';
 import 'package:auth/common/bloc/button/button_state_cubit.dart';
@@ -23,7 +22,7 @@ class SigninPage extends StatefulWidget {
 class _SigninPageState extends State<SigninPage> {
   final TextEditingController _emailCon = TextEditingController();
   final TextEditingController _passwordCon = TextEditingController();
-  bool _obscurePassword = true; // Biến để kiểm soát hiển thị mật khẩu
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -51,25 +50,27 @@ class _SigninPageState extends State<SigninPage> {
           },
           child: SafeArea(
             minimum: const EdgeInsets.only(top: 100, right: 16, left: 16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const HeaderImage(),
-                _signin(),
-                const SizedBox(height: 30),
-                _emailField(),
-                const SizedBox(height: 20),
-                _password(),
-                const SizedBox(height: 30),
-                _createAccountButton(context),
-                const SizedBox(height: 20),
-                const ForgetPass(),
-                const SizedBox(height: 20),
-                SocialLoginButtons(),
-                const SizedBox(height: 20),
-                _signupText(context),
-              ],
+            child: SingleChildScrollView( // Thêm ScrollView để tránh overflow
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const HeaderImage(),
+                  _signin(),
+                  const SizedBox(height: 30),
+                  _emailField(),
+                  const SizedBox(height: 20),
+                  _password(),
+                  const SizedBox(height: 30),
+                  _createAccountButton(context),
+                  const SizedBox(height: 20),
+                  const ForgetPass(),
+                  const SizedBox(height: 20),
+                  SocialLoginButtons(),
+                  const SizedBox(height: 20),
+                  _signupText(context),
+                ],
+              ),
             ),
           ),
         ),
