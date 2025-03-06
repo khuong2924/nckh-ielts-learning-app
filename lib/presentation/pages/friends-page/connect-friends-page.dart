@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../components/BottomNavBar.dart';
@@ -101,26 +102,47 @@ class _ConnectFriendPageState extends State<ConnectFriendPage> {
       return;
     }
 
+    String myId = FirebaseAuth.instance.currentUser!.uid;
+    DocumentSnapshot myDoc = await FirebaseFirestore.instance.collection('users').doc(myId).get();
+    List<dynamic> myFriends = myDoc['friend_list'] ?? [];
+
     try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('username', isGreaterThanOrEqualTo: query)
-          .where('username', isLessThan: query + '\uf8ff')
-          .get();
+      QuerySnapshot querySnapshot;
+
+      if (query.contains("@")) {
+        // Nếu nhập email → tìm theo email
+        querySnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: query)
+            .get();
+      } else {
+        // Nếu không có '@' → tìm theo username
+        querySnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('username', isEqualTo: query)
+            .get();
+      }
 
       List<Map<String, dynamic>> users = querySnapshot.docs
-          .map((doc) => {
-        'id': doc.id,
-        'username': doc['username'] ?? 'Unknown',
-        'avatar': doc['avatar'] ?? '',
-      })
-          .toList();
+          .where((doc) => doc.id != myId && !myFriends.contains(doc.id)) // ⚠️ Lọc bỏ bản thân & bạn bè
+          .map((doc) {
+        return {
+          'id': doc.id,
+          'username': doc['username'] ?? 'Unknown',
+          'email': doc['email'] ?? 'No email',
+          'avatar': doc['avatar'] ?? '',
+        };
+      }).toList();
 
       setState(() {
         _users = users;
       });
+
+      if (_users.isEmpty) {
+        print("Không tìm thấy người dùng phù hợp.");
+      }
     } catch (e) {
-      print("Error searching users: $e");
+      print("Lỗi khi tìm kiếm người dùng: $e");
     }
   }
 
