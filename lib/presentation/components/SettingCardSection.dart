@@ -2,6 +2,8 @@ import 'package:auth/presentation/pages/friends-page/list-friends-page.dart';
 import 'package:flutter/material.dart';
 import 'package:auth/presentation/pages/account-management/profile-page.dart';
 import 'package:auth/presentation/pages/account-management/complaint-page.dart';
+import 'package:auth/presentation/pages/statistical/statistical.dart';
+
 
 import 'SettingModal.dart';
 
@@ -58,7 +60,10 @@ class SettingsCardSection extends StatelessWidget {
             title: 'Report',
             backgroundColor: const Color(0xFFC5E8FF),
             onTap: () {
-
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => Statistical()),
+              );
             },
           ),
           const SizedBox(height: 15),

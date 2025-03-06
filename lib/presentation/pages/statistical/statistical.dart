@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Statistical extends StatefulWidget {
   const Statistical({super.key});
@@ -14,6 +15,95 @@ class _StatisticalState extends State<Statistical> {
   int _currentIndex = 0;
   DateTime? _beginDate;
   DateTime? _endDate;
+  final supabase = Supabase.instance.client;
+  int totalTests = 0;
+  int totalTime = 0;
+  double readingPercent = 0;
+  double listeningPercent = 0;
+  double writingPercent = 0;
+  int readingCount = 0;
+  int listeningCount = 0;
+  int writingCount = 0;
+  int readingTime = 0;
+  int listeningTime = 0;
+  int writingTime = 0;
+  Map<String, Map<String, int>> testCountsByDate = {};
+
+  Future<void> fetchStatistics({DateTime? startDate, DateTime? endDate}) async {
+    try {
+      final user = supabase.auth.currentUser;
+      //final userId = 'XUdnZqIROHW9qhFdYE7kpUvW4RR2'; user test
+      if (user == null) {
+        print('User not logged in');
+        return;
+      }
+      final userId = user.id;
+
+      final now = DateTime.now();
+      final defaultStartDate = DateTime(now.year, now.month - 1, now.day);
+
+      final response = await supabase
+          .from('test_results')
+          .select('test_id, completed_at, time, test:test_id(test_type)')
+          .eq('user_id', userId)
+          .gte(
+              'completed_at', (startDate ?? defaultStartDate).toIso8601String())
+          .lte('completed_at', (endDate ?? now).toIso8601String());
+
+      if (response.isNotEmpty) {
+        for (var item in response) {
+          String testType = item['test']['test_type'];
+          String date = item['completed_at'].split('T')[0];
+          int testTime = item['time'] as int;
+
+          if (testType == 'reading') {
+            readingCount++;
+            readingTime += testTime;
+          } else if (testType == 'listening') {
+            listeningCount++;
+            listeningTime += testTime;
+          } else if (testType == 'writing') {
+            writingCount++;
+            writingTime += testTime;
+          }
+          if (!testCountsByDate.containsKey(date)) {
+            testCountsByDate[date] = {
+              'reading': 0,
+              'listening': 0,
+              'writing': 0
+            };
+          }
+          testCountsByDate[date]![testType] =
+              (testCountsByDate[date]![testType] ?? 0) + 1;
+        }
+
+        int total = readingCount + listeningCount + writingCount;
+
+        setState(() {
+          totalTests = total;
+          totalTime =
+              response.fold(0, (sum, item) => sum + (item['time'] as int));
+
+          // Tính phần trăm từng loại bài test
+          readingPercent = total > 0 ? (readingCount / total) * 100 : 0;
+          listeningPercent = total > 0 ? (listeningCount / total) * 100 : 0;
+          writingPercent = total > 0 ? (writingCount / total) * 100 : 0;
+          this.testCountsByDate = testCountsByDate;
+        });
+      }
+    } catch (error) {
+      print('Lỗi khi lấy dữ liệu: $error');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _beginDate = DateTime(now.year, now.month - 1, now.day);
+    _endDate = now;
+    fetchStatistics(startDate: _beginDate, endDate: _endDate);
+  }
 
   Future<void> _selectDate(BuildContext context, bool isBegin) async {
     DateTime? picked = await showDatePicker(
@@ -29,6 +119,7 @@ class _StatisticalState extends State<Statistical> {
         } else {
           _endDate = picked;
         }
+        fetchStatistics(startDate: _beginDate, endDate: _endDate);
       });
     }
   }
@@ -67,9 +158,9 @@ class _StatisticalState extends State<Statistical> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _infoCard("Total Number Tests", "30 Tests"),
+                          _infoCard("Total Number Tests", "$totalTests Tests"),
                           const SizedBox(width: 10),
-                          _infoCard("Total Study Time", "30 hours 15 minutes"),
+                          _infoCard("Total Study Time", "$totalTime minutes"),
                         ],
                       ),
                       const SizedBox(height: 30),
@@ -159,12 +250,20 @@ class _StatisticalState extends State<Statistical> {
             PieChartData(
               sections: [
                 PieChartSectionData(
-                    value: 33,
-                    color: Color(0xFF4681DA).withOpacity(0.7),
+                    value: readingPercent,
+                    color: const Color(0xFF4681DA).withOpacity(0.7),
+                    title: '${readingPercent.toStringAsFixed(1)}%',
                     radius: 50),
-                PieChartSectionData(value: 33, color: Colors.red, radius: 50),
                 PieChartSectionData(
-                    value: 34, color: Color(0xFF4681DA), radius: 50),
+                    value: listeningPercent,
+                    color: const Color(0xFF4681DA),
+                    title: '${listeningPercent.toStringAsFixed(1)}%',
+                    radius: 50),
+                PieChartSectionData(
+                    value: writingPercent,
+                    color: Colors.red,
+                    title: '${writingPercent.toStringAsFixed(1)}%',
+                    radius: 50),
               ],
             ),
           ),
@@ -173,12 +272,20 @@ class _StatisticalState extends State<Statistical> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _legend(Color(0xFF4681DA).withOpacity(0.7), "Reading", "10 tests",
-                "10h 15m"),
+            _legend(
+                const Color(0xFF4681DA).withOpacity(0.7),
+                "Reading",
+                "$readingCount tests",
+                "${readingTime ~/ 60}h ${readingTime % 60}m"),
             const SizedBox(height: 20),
-            _legend(Color(0xFF4681DA), "Listening", "10 tests", "10h"),
+            _legend(
+                const Color(0xFF4681DA),
+                "Listening",
+                "$listeningCount tests",
+                "${listeningTime ~/ 60}h ${listeningTime % 60}m"),
             const SizedBox(height: 20),
-            _legend(Colors.red, "Writing", "10 tests", "10h"),
+            _legend(Colors.red, "Writing", "$writingCount tests",
+                "${writingTime ~/ 60}h ${writingTime % 60}m"),
           ],
         ),
       ],
@@ -213,25 +320,80 @@ class _StatisticalState extends State<Statistical> {
   }
 
   Widget _barChart(String title) {
+    List<BarChartGroupData> barGroups = [];
+    List<String> dates = testCountsByDate.keys.toList()..sort();
+
+    for (int i = 0; i < dates.length; i++) {
+      String date = dates[i];
+      int count = testCountsByDate[date]?[title.toLowerCase()] ?? 0;
+
+      barGroups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [BarChartRodData(toY: count.toDouble(), color: Colors.blue)],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        Text(title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
         SizedBox(
           height: 200,
           child: BarChart(
             BarChartData(
-              barGroups: List.generate(
-                  10,
-                  (index) => BarChartGroupData(x: index, barRods: [
-                        BarChartRodData(
-                            toY: (index % 5 + 3).toDouble(), color: Colors.blue)
-                      ])),
-              borderData: FlBorderData(show: false),
-              titlesData: FlTitlesData(show: true),
+              barGroups: barGroups,
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 30,
+                    getTitlesWidget: (double value, TitleMeta meta) {
+                      if (value % 1 == 0) {
+                        return Text(
+                          value.toInt().toString(),
+                          style: const TextStyle(fontSize: 12),
+                        );
+                      }
+                      return Container();
+                    },
+                  ),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (double value, TitleMeta meta) {
+                      int index = value.toInt();
+                      if (index >= 0 && index < dates.length) {
+                        return Transform.rotate(
+                          angle: -0.5, // Góc xoay của nhãn trục X
+                          child: Text(dates[index],
+                              style: const TextStyle(fontSize: 10)),
+                        );
+                      }
+                      return const Text('');
+                    },
+                  ),
+                ),
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: const Border(
+                  left: BorderSide(color: Colors.black, width: 1),
+                  bottom: BorderSide(color: Colors.black, width: 1),
+                  right: BorderSide(color: Colors.transparent),
+                  top: BorderSide(color: Colors.transparent),
+                ),
+              ),
             ),
           ),
         ),
