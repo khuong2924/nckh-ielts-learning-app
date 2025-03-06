@@ -2,6 +2,9 @@ import 'package:auth/presentation/pages/friends-page/connect-friends-page.dart';
 import 'package:flutter/material.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:auth/presentation/pages/friends-page/ChatPage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
@@ -12,6 +15,27 @@ class FriendsPage extends StatefulWidget {
 
 class _FriendsPageState extends State<FriendsPage> {
   final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _friends = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFriends();
+  }
+
+  String getCurrentUserId() {
+    return FirebaseAuth.instance.currentUser?.uid ?? "";
+  }
+
+  void _loadFriends() async {
+    List<Map<String, dynamic>> friends = await _fetchFriends();
+    print("Fetched friends: $friends"); // Debug log
+    setState(() {
+      _friends = friends;
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,12 +68,7 @@ class _FriendsPageState extends State<FriendsPage> {
                   ),
                 ),
               ),
-              BottomNavBar(
-                currentIndex: 3,
-                onTap: (index) {
-                  // Handle navigation
-                },
-              ),
+              BottomNavBar(currentIndex: 3, onTap: (index) {}),
             ],
           ),
         ),
@@ -70,23 +89,14 @@ class _FriendsPageState extends State<FriendsPage> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        Container(
-
-          child: IconButton(
-            icon: Image.asset(
-              'lib/icons/ic-add.png',
-              width: 32,
-              height: 32,
-            ),
-            onPressed: () {
-
-              Navigator.push(
+        IconButton(
+          icon: Image.asset('lib/icons/ic-add.png', width: 32, height: 32),
+          onPressed: () {
+            Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => ConnectFriendPage()),
-              );
-
-            },
-          ),
+                MaterialPageRoute(
+                    builder: (context) => const ConnectFriendPage()));
+          },
         ),
       ],
     );
@@ -98,9 +108,7 @@ class _FriendsPageState extends State<FriendsPage> {
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            color: Color(0xAF4681DA),
-          ),
+          side: const BorderSide(color: Color(0xAF4681DA)),
           borderRadius: BorderRadius.circular(28),
         ),
       ),
@@ -115,11 +123,7 @@ class _FriendsPageState extends State<FriendsPage> {
               decoration: const InputDecoration(
                 border: InputBorder.none,
                 hintText: 'Find friend',
-                hintStyle: TextStyle(
-                  color: Color(0xFF49454F),
-                  fontSize: 16,
-                  fontFamily: 'Roboto',
-                ),
+                hintStyle: TextStyle(color: Color(0xFF49454F), fontSize: 16),
               ),
             ),
           ),
@@ -129,66 +133,127 @@ class _FriendsPageState extends State<FriendsPage> {
   }
 
   Widget _buildFriendsList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Expanded(
       child: ListView.builder(
-        itemCount: 10, // Số lượng bạn bè
+        itemCount: _friends.length,
         itemBuilder: (context, index) {
-          return _buildFriendItem();
+          return _buildFriendItem(_friends[index]);
         },
       ),
     );
   }
 
-  Widget _buildFriendItem() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Row(
-        children: [
-          _buildAvatarWithBorder(),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Friend Name',
-                style: TextStyle(
-                  color: Color(0xFF49454F),
-                  fontSize: 16,
-                  fontFamily: 'Roboto',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                ' --the last message--',
-                style: TextStyle(
-                  color: Color(0xFF49454F),
-                  fontSize: 14,
-                  fontFamily: 'Roboto',
-                ),
-              ),
-            ],
+  Widget _buildFriendItem(Map<String, dynamic> friend) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                ChatPage(friendId: friend["id"], friendName: friend["name"]),
           ),
-        ],
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: Row(
+          children: [
+            _buildAvatarWithBorder(friend["avatar"]),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(friend['name'],
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w500)),
+                Text(friend['last_message'],
+                    style: const TextStyle(fontSize: 14)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildAvatarWithBorder() {
+  Widget _buildAvatarWithBorder(String avatarUrl) {
     return Container(
       width: 50,
       height: 50,
-      decoration: ShapeDecoration(
-        shape: OvalBorder(
-          side: BorderSide(width: 1, color: Color(0xFF0067AC)),
-        ),
+      decoration: const ShapeDecoration(
+        shape: OvalBorder(side: BorderSide(width: 1, color: Color(0xFF0067AC))),
       ),
       child: ClipOval(
-        child: Image.network(
-          "https://s3-alpha-sig.figma.com/img/b1d3/043c/8ead60558de8c20583a7767f336f70e5?Expires=1737331200&Key-Pair-Id=APKAQ4GOSFWCVNEHN3O4&Signature=QpXFa64c9QjJEFyUsh8dwUPd7NJJUvHUxBACidz8DAolk5aBXEcn3dXfRV1pVjze~fFjL63gfbictTfcIndxMzgh-7jomOch92jCfz3myeDh~OEXU7tv7xtaUko7zwxbyZHUWxh2oH1Jz4lb2hnFtJQLi63UdHqiXEK~y5OQOUjzh2c4KYsai9~kSrnxNFLA2Bq-qZkLpJF6lV5ipJbvZUBi~VTLsHHIWE~3M-EwMAIVHiQTqBx4gRMySat9svY1EwEIPh7s8-O49xDW4yLlL5Czml~M9E0U25kiwpdj0~TwECwJ9yy3a-8ES0V5qHT-UxUmf-L2rC6xED19MOFOJw__",
-          fit: BoxFit.cover,
-        ),
+        child: avatarUrl.isNotEmpty
+            ? Image.network(avatarUrl, fit: BoxFit.cover)
+            : Image.asset("assets/default_avatar.png", fit: BoxFit.cover),
       ),
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchFriends() async {
+    String currentUserId = getCurrentUserId();
+    if (currentUserId.isEmpty) {
+      print("Error: User not logged in");
+      return [];
+    }
+
+    List<Map<String, dynamic>> friends = [];
+
+    try {
+      QuerySnapshot friendSnapshot = await FirebaseFirestore.instance
+          .collection('friend_list')
+          .where('user_id', isEqualTo: currentUserId)
+          .get();
+
+      print("Friend list fetched: ${friendSnapshot.docs.length} documents");
+
+      for (var doc in friendSnapshot.docs) {
+        String friendId = doc['friend_id'];
+
+        QuerySnapshot messageSnapshot = await FirebaseFirestore.instance
+            .collection('messages')
+            .where('sender_id', whereIn: [currentUserId, friendId])
+            .where('receiver_id', whereIn: [currentUserId, friendId])
+            .orderBy('timestamp', descending: true)
+            .limit(1)
+            .get();
+
+        String lastMessage = "No messages yet";
+        DateTime lastInteraction = DateTime(2000);
+
+        if (messageSnapshot.docs.isNotEmpty) {
+          lastMessage = messageSnapshot.docs.first['content'];
+          lastInteraction =
+              (messageSnapshot.docs.first['timestamp'] as Timestamp).toDate();
+        }
+
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(friendId)
+            .get();
+
+        if (userDoc.exists) {
+          friends.add({
+            "id": friendId,
+            "name": userDoc["name"],
+            "avatar": userDoc["avatar"],
+            "last_message": lastMessage,
+            "last_interaction": lastInteraction
+          });
+        }
+      }
+
+      friends.sort((a, b) => b["last_interaction"].compareTo(a["last_interaction"]));
+    } catch (e) {
+      print("Error fetching friends: $e");
+    }
+
+    return friends;
   }
 
   @override
