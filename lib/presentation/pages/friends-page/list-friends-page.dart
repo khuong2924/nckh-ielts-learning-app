@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:auth/presentation/pages/friends-page/ChatPage.dart';
+import 'package:auth/presentation/pages/friends-page/Chat.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class FriendsPage extends StatefulWidget {
@@ -153,11 +153,14 @@ class _FriendsPageState extends State<FriendsPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                ChatPage(friendId: friend["id"], friendName: friend["name"]),
+            builder: (context) => Chat(
+              friendId: friend["id"] as String,  // Ép kiểu để chắc chắn `friend["id"]` là String
+              friendName: friend["name"] as String,
+            ),
           ),
         );
       },
+
       child: Padding(
         padding: const EdgeInsets.only(bottom: 16.0),
         child: Row(
@@ -205,50 +208,30 @@ class _FriendsPageState extends State<FriendsPage> {
     List<Map<String, dynamic>> friends = [];
 
     try {
-      QuerySnapshot friendSnapshot = await FirebaseFirestore.instance
-          .collection('friend_list')
-          .where('user_id', isEqualTo: currentUserId)
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
           .get();
 
-      print("Friend list fetched: ${friendSnapshot.docs.length} documents");
+      if (userDoc.exists) {
+        List<dynamic> friendIds = userDoc['friend_list'] ?? [];
 
-      for (var doc in friendSnapshot.docs) {
-        String friendId = doc['friend_id'];
+        for (String friendId in friendIds) {
+          DocumentSnapshot friendDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(friendId)
+              .get();
 
-        QuerySnapshot messageSnapshot = await FirebaseFirestore.instance
-            .collection('messages')
-            .where('sender_id', whereIn: [currentUserId, friendId])
-            .where('receiver_id', whereIn: [currentUserId, friendId])
-            .orderBy('timestamp', descending: true)
-            .limit(1)
-            .get();
-
-        String lastMessage = "No messages yet";
-        DateTime lastInteraction = DateTime(2000);
-
-        if (messageSnapshot.docs.isNotEmpty) {
-          lastMessage = messageSnapshot.docs.first['content'];
-          lastInteraction =
-              (messageSnapshot.docs.first['timestamp'] as Timestamp).toDate();
-        }
-
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(friendId)
-            .get();
-
-        if (userDoc.exists) {
-          friends.add({
-            "id": friendId,
-            "name": userDoc["name"],
-            "avatar": userDoc["avatar"],
-            "last_message": lastMessage,
-            "last_interaction": lastInteraction
-          });
+          if (friendDoc.exists) {
+            friends.add({
+              "id": friendId,
+              "name": friendDoc["username"] ?? "Unknown",
+              "avatar": friendDoc["avatar"] ?? "",
+              "last_message": "No messages yet",
+            });
+          }
         }
       }
-
-      friends.sort((a, b) => b["last_interaction"].compareTo(a["last_interaction"]));
     } catch (e) {
       print("Error fetching friends: $e");
     }

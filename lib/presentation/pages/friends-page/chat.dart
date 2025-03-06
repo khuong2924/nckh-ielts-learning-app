@@ -6,7 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 
 class Chat extends StatefulWidget {
-  const Chat({super.key});
+  final String friendId;
+  final String friendName;
+
+  const Chat({super.key, required this.friendId, required this.friendName});
 
   @override
   State<Chat> createState() => _ChatState();

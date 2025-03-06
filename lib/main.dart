@@ -40,7 +40,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: SplashScreen(), // Để lại SigninPage như cũ
+      home: SigninPage(), // Để lại SigninPage như cũ
     );
   }
 }
