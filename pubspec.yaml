@@ -12,7 +12,12 @@ dependencies:
   audioplayers: ^5.2.1
   flutter:
     sdk: flutter
+  emoji_picker_flutter: ^1.6.3
+  image_picker: ^1.0.4
+  record: ^4.4.4
+  permission_handler: ^11.0.1
   flutter_svg: ^1.0.3
+  file_picker: ^6.1.1
   fl_chart: ^0.70.2
   firebase_core:
   firebase_auth:
@@ -57,6 +62,7 @@ flutter:
     - lib/images/devicon_google.svg
     - lib/images/logos_facebook.svg
     - lib/images/logos_twitter.svg
+    - lib/images/shiba.jpg
     - lib/icons/icons8-bell.svg
     - lib/icons/ic-flashcard.png
     - lib/icons/ic-reading.png
