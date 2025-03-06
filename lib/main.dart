@@ -9,6 +9,7 @@ import 'package:auth/presentation/pages/reading/reading-done.dart';
 import 'package:auth/presentation/pages/main-page/home-page.dart';
 import 'package:auth/presentation/pages/account-management/splash_screen.dart';
 import 'package:auth/presentation/pages/statistical/statistical.dart';
+import 'package:auth/presentation/pages/friends-page/chat.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase package
 
 Future<void> main() async {
