@@ -81,8 +81,7 @@ class _HomePageState extends State<HomePage> {
     try {
       final tests = await _supabaseService.fetchTests();
       setState(() {
-        // Chuyển đổi danh sách bài kiểm tra thành danh sách TestCard
-        _tests = tests.map((e) => TestCard.fromJson(e)).toList(); // Đảm bảo truyền userId nếu cần
+        _tests = tests.map((e) => TestCard.fromJson(e)).toList();
         _filteredTests = _tests;
         _resultCount = _tests.length;
       });
