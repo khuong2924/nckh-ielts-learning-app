@@ -32,14 +32,12 @@ class _ChatState extends State<Chat> {
     super.initState();
   }
 
-  /// 🔹 Hàm tạo ID cuộc trò chuyện duy nhất (ĐÃ SỬA LỖI)
   String _getChatRoomId(String userId1, String userId2) {
     List<String> ids = [userId1, userId2];
-    ids.sort(); // Đảm bảo ID luôn giống nhau giữa hai người
+    ids.sort();
     return ids.join("_");
   }
 
-  /// 🔹 Gửi tin nhắn văn bản
   void _sendMessage() async {
     if (_controller.text.trim().isEmpty) return;
 
@@ -60,69 +58,6 @@ class _ChatState extends State<Chat> {
     _controller.clear();
   }
 
-  /// 🔹 Chọn ảnh từ thư viện và gửi
-  void _pickImage() async {
-    final ImagePicker _picker = ImagePicker();
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-
-    if (image != null) {
-      File file = File(image.path);
-      List<int> imageBytes = await file.readAsBytes();
-      String base64Image = base64Encode(imageBytes);
-
-      String myId = _auth.currentUser!.uid;
-
-      await _firestore
-          .collection('messages')
-          .doc(_getChatRoomId(myId, widget.friendId))
-          .collection('chats')
-          .add({
-        'imageBase64': base64Image,
-        'senderId': myId,
-        'receiverId': widget.friendId,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    }
-  }
-
-  /// 🔹 Chọn file đính kèm
-  void _pickFile() async {
-    final result = await FilePicker.platform.pickFiles();
-    if (result != null && result.files.single.path != null) {
-      // Lưu file vào Firestore hoặc Firebase Storage (cần triển khai)
-    }
-  }
-
-  /// 🔹 Hiển thị các tùy chọn đính kèm
-  void _showAttachmentOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.image),
-              title: const Text('Chọn ảnh'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.attach_file),
-              title: const Text('Chọn file'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickFile();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// 🔹 Xây dựng tin nhắn hiển thị trên màn hình
   Widget _buildMessage(Map<String, dynamic> message) {
     bool isMe = message['isMe'] ?? false;
     String text = message['text'] ?? '';
@@ -229,10 +164,6 @@ class _ChatState extends State<Chat> {
                   padding: const EdgeInsets.all(8.0),
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline, color: Colors.black54),
-                        onPressed: _showAttachmentOptions,
-                      ),
                       IconButton(
                         icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.black54),
                         onPressed: () {
