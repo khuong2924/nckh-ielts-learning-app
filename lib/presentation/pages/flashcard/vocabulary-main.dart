@@ -109,33 +109,45 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment(0.00, -1.00),
-            end: Alignment(0, 1),
-            colors: [Colors.white, Color(0xFFC5E8FF)],
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CustomAppBar(),
-            _buildLearningSection(),
-            _buildVocabularySection(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildVocabularyList(vocabularies),
-                  _buildVocabularyList(vocabularies.where((v) => !v.isLearned).toList()),
-                  _buildVocabularyList(vocabularies.where((v) => v.isLearned).toList()),
-                  _buildVocabularyList(vocabularies.where((v) => v.isFavorite).toList()),
-                ],
-              ),
+      body: SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.white, Color(0xFFC5E8FF)],
             ),
-            BottomNavBar(currentIndex: 1, onTap: (int index) {}),
-          ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CustomAppBar(),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLearningSection(),
+                      _buildVocabularySection(),
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.45,
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildVocabularyList(vocabularies),
+                            _buildVocabularyList(vocabularies.where((v) => !v.isLearned).toList()),
+                            _buildVocabularyList(vocabularies.where((v) => v.isLearned).toList()),
+                            _buildVocabularyList(vocabularies.where((v) => v.isFavorite).toList()),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              BottomNavBar(currentIndex: 1, onTap: (int index) {}),
+            ],
+          ),
         ),
       ),
     );
