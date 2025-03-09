@@ -123,8 +123,21 @@ class _SigninPageState extends State<SigninPage> {
   Widget _createAccountButton(BuildContext context) {
     return Builder(
       builder: (context) {
-        return BasicAppButton(
-          title: 'Login',
+        return Container(
+          width: double.infinity, // Full width button
+          height: 50, // Fixed height for better appearance
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xff2A4ECA).withOpacity(0.3),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
+          child: ElevatedButton(
             onPressed: () async {
               String email = _emailCon.text.trim();
               String password = _passwordCon.text;
@@ -169,7 +182,24 @@ class _SigninPageState extends State<SigninPage> {
                   SnackBar(content: Text(errorMessage)),
                 );
               }
-            }
+            },
+            style: ElevatedButton.styleFrom(
+              foregroundColor: Colors.white,
+              backgroundColor: Color(0xff2A4ECA),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              'Login',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
         );
       },
     );

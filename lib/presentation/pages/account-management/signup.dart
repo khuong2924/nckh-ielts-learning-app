@@ -131,67 +131,97 @@ class _SignupPageState extends State<SignupPage> {
   Widget _createAccountButton(BuildContext context) {
     return Builder(
       builder: (context) {
-        return BasicAppButton(
-          title: 'Create Account',
-          onPressed: () async {
-            String username = _usernameCon.text.trim();
-            String email = _emailCon.text.trim();
-            String password = _passwordCon.text.trim();
+        return Container(
+          width: double.infinity, // Full width button
+          height: 50, // Fixed height for better appearance
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xff2A4ECA).withOpacity(0.3),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: () async {
+              String username = _usernameCon.text.trim();
+              String email = _emailCon.text.trim();
+              String password = _passwordCon.text.trim();
 
-            if (email.isEmpty || password.isEmpty || username.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please fill all fields!')),
-              );
-              return;
-            }
-
-            try {
-              UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-                email: email,
-                password: password,
-              );
-
-              // Lấy user_id từ Firebase
-              String userId = userCredential.user?.uid ?? '';
-
-              // Lưu thông tin vào Firestore
-              await FirebaseFirestore.instance.collection('users').doc(userId).set({
-                'username': username,
-                'email': email,
-                'gender': '',
-                'birthDate': '',
-                'phone': '',
-                'goal': '',
-              });
-
-              // Lưu thông tin vào Supabase
-              await Supabase.instance.client
-                  .from('users')
-                  .insert({
-                'user_id': userId,
-                'name': username,
-                'email': email,
-              });
-
-              // Emit success state
-              context.read<ButtonStateCubit>().emit(ButtonSuccessState());
-
-            } on FirebaseAuthException catch (e) {
-              String errorMessage = 'An error occurred';
-              if (e.code == 'weak-password') {
-                errorMessage = 'The password provided is too weak.';
-              } else if (e.code == 'email-already-in-use') {
-                errorMessage = 'The account already exists for that email.';
+              if (email.isEmpty || password.isEmpty || username.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please fill all fields!')),
+                );
+                return;
               }
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(errorMessage)),
-              );
-            } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("An unexpected error occurred.")),
-              );
-            }
-          },
+
+              try {
+                UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                  email: email,
+                  password: password,
+                );
+
+                // Lấy user_id từ Firebase
+                String userId = userCredential.user?.uid ?? '';
+
+                // Lưu thông tin vào Firestore
+                await FirebaseFirestore.instance.collection('users').doc(userId).set({
+                  'username': username,
+                  'email': email,
+                  'gender': '',
+                  'birthDate': '',
+                  'phone': '',
+                  'goal': '',
+                });
+
+                // Lưu thông tin vào Supabase
+                await Supabase.instance.client
+                    .from('users')
+                    .insert({
+                  'user_id': userId,
+                  'name': username,
+                  'email': email,
+                });
+
+                // Emit success state
+                context.read<ButtonStateCubit>().emit(ButtonSuccessState());
+
+              } on FirebaseAuthException catch (e) {
+                String errorMessage = 'An error occurred';
+                if (e.code == 'weak-password') {
+                  errorMessage = 'The password provided is too weak.';
+                } else if (e.code == 'email-already-in-use') {
+                  errorMessage = 'The account already exists for that email.';
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(errorMessage)),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("An unexpected error occurred.")),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              foregroundColor: Colors.white,
+              backgroundColor: Color(0xff2A4ECA),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              'Create Account',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
         );
       },
     );
