@@ -142,7 +142,7 @@ class VocabularyItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: EdgeInsets.only(bottom: 16),
-      height: 85,
+      height: 65,
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
