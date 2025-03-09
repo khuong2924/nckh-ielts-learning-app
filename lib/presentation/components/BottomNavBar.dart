@@ -3,10 +3,6 @@ import 'package:auth/presentation/pages/main-page/sample-test-home-page.dart';
 import 'package:flutter/material.dart';
 import 'package:auth/presentation/pages/flashcard/flashcard-home.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-// Đảm bảo import trang ComplaintPage
-
-
-
 import 'package:auth/presentation/pages/main-page/setting-page.dart';
 
 class BottomNavBar extends StatelessWidget {
@@ -21,85 +17,178 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Color activeColor = const Color.fromARGB(255, 43, 150, 192);
+    
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       decoration: BoxDecoration(
-        color: const Color(0x0056c9ed),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(20),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
+          ),
+        ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildNavItem('Home', 'lib/icons/ic-home.svg', currentIndex == 0, onTap: () {
-            onTap(0);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => HomeLoad()), // Điều hướng đến ComplaintPage
-            );
-          }),
-          _buildNavItem('Flashcard', 'lib/icons/ic-homecard.png', currentIndex == 1, isImage: true, onTap: () {
-            onTap(1);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => FlashcardHome()), // Điều hướng đến ComplaintPage
-            );
-          }),
-          _buildNavItem('Journey', 'lib/icons/ic-journey.svg', currentIndex == 2, onTap: () {
-            onTap(2);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => HomePage()), // Điều hướng đến ComplaintPage
-            );
-          }),
-          _buildNavItem('Profile', 'lib/icons/ic-profile.svg', currentIndex == 3, onTap: () {
-            onTap(3);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => SettingPage()), // Điều hướng đến ProfilePage
-            );
-          }),
-
+          _buildNavItem(context, 'Home', 'lib/icons/ic-home.svg', 0),
+          _buildNavItem(context, 'Flashcard', 'lib/icons/ic-homecard.png', 1, isImage: true),
+          _buildNavItem(context, 'Journey', 'lib/icons/ic-journey.svg', 2),
+          _buildNavItem(context, 'Profile', 'lib/icons/ic-profile.svg', 3),
         ],
       ),
     );
   }
 
   Widget _buildNavItem(
-      String label,
-      String iconPath,
-      bool isActive,
-      {bool isImage = false,
-        VoidCallback? onTap}
-      ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          isImage
-              ? Image.asset(
-            iconPath,
-            width: 25,
-            height: 25,
-            fit: BoxFit.fill,
-          )
-              : SvgPicture.asset(
-            iconPath,
-            width: 25,
-            height: 25,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 6,
-              color: isActive ? const Color(0xaf4681da) : Colors.black,
-              fontFamily: 'Montserrat-SemiBold',
+    BuildContext context,
+    String label,
+    String iconPath,
+    int index,
+    {bool isImage = false}
+  ) {
+    // Use the currentIndex passed to the widget to determine active state
+    bool isActive = currentIndex == index;
+    final Color activeColor = const Color.fromARGB(255, 43, 150, 192);
+    final Color inactiveColor = const Color(0xFF9E9E9E);
+    
+    return InkWell(
+      onTap: () {
+        // Call onTap before navigation to update the UI state in the parent widget
+        onTap(index);
+        
+        // Then handle navigation
+        _navigateToPage(context, index);
+      },
+      splashColor: activeColor.withAlpha(25),
+      highlightColor: activeColor.withAlpha(51),
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? activeColor.withAlpha(25) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              transform: isActive 
+                ? (Matrix4.identity()..translate(0.0, -2.0)) 
+                : Matrix4.identity(),
+              child: isImage
+                ? Image.asset(
+                    iconPath,
+                    width: 24,
+                    height: 24,
+                    color: isActive ? activeColor : inactiveColor,
+                  )
+                : SvgPicture.asset(
+                    iconPath,
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(
+                      isActive ? activeColor : inactiveColor,
+                      BlendMode.srcIn,
+                    ),
+                  ),
             ),
-          ),
-        ],
+            const SizedBox(height: 6),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                fontSize: isActive ? 13 : 12,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                color: isActive ? activeColor : inactiveColor,
+                fontFamily: 'Montserrat-SemiBold',
+              ),
+              child: Text(label),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: EdgeInsets.only(top: isActive ? 4 : 0),
+              width: isActive ? 4 : 0,
+              height: isActive ? 4 : 0,
+              decoration: BoxDecoration(
+                color: activeColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  // Separate navigation logic from state management
+  void _navigateToPage(BuildContext context, int index) {
+    switch (index) {
+      case 0:
+        if (context.findAncestorWidgetOfExactType<HomeLoad>() == null) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (_, animation, __) => const HomeLoad(),
+              transitionsBuilder: (_, animation, __, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              transitionDuration: const Duration(milliseconds: 300),
+            ),
+          );
+        }
+        break;
+      case 1:
+        if (context.findAncestorWidgetOfExactType<FlashcardHome>() == null) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (_, animation, __) => const FlashcardHome(),
+              transitionsBuilder: (_, animation, __, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              transitionDuration: const Duration(milliseconds: 300),
+            ),
+          );
+        }
+        break;
+      case 2:
+        if (context.findAncestorWidgetOfExactType<HomePage>() == null) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (_, animation, __) => const HomePage(),
+              transitionsBuilder: (_, animation, __, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              transitionDuration: const Duration(milliseconds: 300),
+            ),
+          );
+        }
+        break;
+      case 3:
+        if (context.findAncestorWidgetOfExactType<SettingPage>() == null) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (_, animation, __) => const SettingPage(),
+              transitionsBuilder: (_, animation, __, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              transitionDuration: const Duration(milliseconds: 300),
+            ),
+          );
+        }
+        break;
+    }
   }
 }
