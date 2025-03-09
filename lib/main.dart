@@ -7,6 +7,8 @@ import 'firebase_options.dart'; // File được tạo bởi Firebase CLI
 import 'package:auth/presentation/pages/account-management/signin.dart';
 import 'package:auth/presentation/pages/reading/reading-done.dart';
 import 'package:auth/presentation/pages/main-page/home-page.dart';
+import 'package:auth/presentation/pages/account-management/signup.dart';
+
 import 'package:auth/presentation/pages/account-management/splash_screen.dart';
 import 'package:auth/presentation/pages/statistical/statistical.dart';
 import 'package:auth/presentation/pages/friends-page/chat.dart';
@@ -40,7 +42,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: SigninPage(), // Để lại SigninPage như cũ
+      home: HomeLoad(),
     );
   }
 }

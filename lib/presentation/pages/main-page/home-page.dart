@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:auth/presentation/pages/account-management/signin.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
@@ -14,8 +15,30 @@ class HomeLoad extends StatefulWidget {
   State<StatefulWidget> createState() => _HomeLoad();
 }
 
-class _HomeLoad extends State<HomeLoad> {
+class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
+  late AnimationController _animationController;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   void _signOut() async {
     await FirebaseAuth.instance.signOut();
@@ -26,7 +49,7 @@ class _HomeLoad extends State<HomeLoad> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const SigninPage()), // Quay về trang đăng nhập
+      MaterialPageRoute(builder: (context) => const SigninPage()),
     );
   }
 
@@ -45,17 +68,21 @@ class _HomeLoad extends State<HomeLoad> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildWelcomeSection(),
-                      const SizedBox(height: 20),
-                      _buildStreakCard(),
-                      const SizedBox(height: 20),
-                      _buildRecommendationsSection(),
-                    ],
+                physics: const BouncingScrollPhysics(),
+                child: FadeTransition(
+                  opacity: _animation,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildWelcomeSection(),
+                        const SizedBox(height: 24),
+                        _buildStreakCard(),
+                        const SizedBox(height: 30),
+                        _buildRecommendationsSection(),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -75,54 +102,133 @@ class _HomeLoad extends State<HomeLoad> {
   }
 
   Widget _buildWelcomeSection() {
-    return const Text(
-      'Are you ready for our IELTS journey?',
-      style: TextStyle(
-        fontSize: 32,
-        color: Color(0xff0067ac),
-        fontFamily: 'Montserrat-Bold',
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.only(top: 16, bottom: 5),
+          child: const Text(
+            'Are you ready for',
+            style: TextStyle(
+              fontSize: 30,
+              color: Color(0xff0067ac),
+              fontFamily: 'Montserrat-Bold',
+              height: 1.2,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: const Text(
+            'our IELTS journey?',
+            style: TextStyle(
+              fontSize: 30,
+              color: Color(0xff0067ac),
+              fontFamily: 'Montserrat-Bold',
+              height: 1.2,
+            ),
+          ),
+        ),
+        Container(
+          width: 60,
+          height: 4,
+          decoration: BoxDecoration(
+            color: const Color(0xff2A4ECA),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildStreakCard() {
+    // Get current date in a proper format
+    final now = DateTime.now();
+    final formattedDate = DateFormat('dd/MM/yyyy').format(now);
+    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF55ACEE), // Màu hợp lệ (định dạng ARGB)
-        border: Border.all(color: const Color(0xff000000)),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF55ACEE), Color(0xFF3B76C4)],
+        ),
         borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF55ACEE).withOpacity(0.3),
+            offset: const Offset(0, 5),
+            blurRadius: 10,
+            spreadRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Great, you\'ve logged in 7 days in a row!',
                   style: TextStyle(
                     fontSize: 16,
-                    color: Color(0xff587dbd),
+                    color: Colors.white,
                     fontFamily: 'Montserrat-Bold',
+                    height: 1.4,
                   ),
                 ),
-                SizedBox(height: 12),
-                Text(
-                  '37/10/2024', // Kiểm tra lại ngày hợp lệ
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xff7674a4),
-                    fontFamily: 'Montserrat-Bold',
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_rounded,
+                      size: 14,
+                      color: Colors.white70,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      formattedDate,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.white70,
+                        fontFamily: 'Montserrat-Medium',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'Keep it up! 🔥',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF3B76C4),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          SvgPicture.asset(
-            'lib/icons/ic-graph.svg',
-            width: 94,
-            height: 94,
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: SvgPicture.asset(
+              'lib/icons/ic-graph.svg',
+              width: 84,
+              height: 84,
+              color: Colors.white, // Use color instead of colorFilter
+            ),
           ),
         ],
       ),
@@ -133,39 +239,61 @@ class _HomeLoad extends State<HomeLoad> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Today\'s recommendations',
-          style: TextStyle(
-            fontSize: 20,
-            color: Colors.black, // Đổi sang màu dễ đọc hơn
-            fontFamily: 'Montserrat-Bold',
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Today\'s recommendations',
+              style: TextStyle(
+                fontSize: 20,
+                color: Colors.black,
+                fontFamily: 'Montserrat-Bold',
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xff2A4ECA).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'View All',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xff2A4ECA),
+                  fontFamily: 'Montserrat-Bold',
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 15),
+        const SizedBox(height: 20),
         _buildLessonCard(
           title: 'Flashcard',
           subtitle: 'Lesson 8',
           iconPath: 'lib/icons/ic-flashcard.png',
           score: '80/100',
           borderColor: const Color(0xffe33629),
+          progress: 0.8,
         ),
-        const SizedBox(height: 15),
+        const SizedBox(height: 16),
         _buildLessonCard(
           title: 'The path of the planet',
           subtitle: 'Reading 5',
           iconPath: 'lib/icons/ic-reading.png',
-          status: 'waiting',
-          borderColor: const Color(0xffc9c9c9),
+          status: 'New',
+          borderColor: const Color(0xff55ACEE),
         ),
-        const SizedBox(height: 15),
+        const SizedBox(height: 16),
         _buildLessonCard(
           title: 'Random topic',
           subtitle: 'Writing',
           iconPath: 'lib/icons/ic-lock.svg',
-          status: 'waiting',
-          borderColor: const Color(0xffc9c9c9),
+          status: 'Premium',
+          borderColor: const Color(0xFFFFAB40),
           isLocked: true,
         ),
+        const SizedBox(height: 30),
       ],
     );
   }
@@ -178,73 +306,130 @@ class _HomeLoad extends State<HomeLoad> {
     String? status,
     required Color borderColor,
     bool isLocked = false,
+    double? progress,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: borderColor, width: 1.5),
+        border: Border.all(color: borderColor.withOpacity(0.5), width: 1.5),
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            offset: const Offset(0, 3),
+            blurRadius: 8,
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            width: 55,
-            height: 55,
-            decoration: BoxDecoration(
-              color: const Color(0xff28273e),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(
-              child: isLocked
-                  ? SvgPicture.asset(
-                iconPath,
-                width: 24,
-                height: 28,
-              )
-                  : Image.asset(
-                iconPath,
-                width: 50,
-                height: 44,
-                fit: BoxFit.fill,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontFamily: 'Montserrat-SemiBold',
+          Row(
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: const Color(0xff28273e),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xff28273e).withOpacity(0.3),
+                      offset: const Offset(0, 3),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: isLocked
+                      ? SvgPicture.asset(
+                    iconPath,
+                    width: 28,
+                    height: 28,
+                    color: Colors.white, // Use color instead of colorFilter
+                  )
+                      : Image.asset(
+                    iconPath,
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.contain,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xffc9c9c9),
-                    fontFamily: 'Montserrat-SemiBold',
-                  ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontFamily: 'Montserrat-SemiBold',
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: borderColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: borderColor,
+                              fontFamily: 'Montserrat-Medium',
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        if (score != null || status != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: score != null
+                                  ? const Color(0xffe33629).withOpacity(0.1)
+                                  : status == "Premium"
+                                      ? const Color(0xFFFFAB40).withOpacity(0.1)
+                                      : const Color(0xff55ACEE).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              score ?? status!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: score != null
+                                    ? const Color(0xffe33629)
+                                    : status == "Premium"
+                                        ? const Color(0xFFFFAB40)
+                                        : const Color(0xff55ACEE),
+                                fontFamily: 'Montserrat-Bold',
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          if (score != null || status != null)
-            Text(
-              score ?? status!,
-              style: TextStyle(
-                fontSize: 12,
-                color: score != null
-                    ? const Color(0xffe33629)
-                    : const Color(0xffc0c0c0),
-                fontFamily: 'Montserrat-Bold',
+          if (progress != null) ...[
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.grey.withOpacity(0.2),
+                valueColor: AlwaysStoppedAnimation<Color>(borderColor),
+                minHeight: 6,
               ),
             ),
+          ],
         ],
       ),
     );
