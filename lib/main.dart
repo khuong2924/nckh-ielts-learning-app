@@ -35,13 +35,63 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+    final Map<int, int> sampleCorrectAnswers = {
+      1: 3,
+      2: 4, 
+      3: 5, 
+    };
+
+    final Map<int, Map<int, String>> sampleUserAnswers = {
+      1: {1: 'A', 2: 'B', 3: 'C', 4: 'D'},
+      2: {1: 'B', 2: 'C', 3: 'A', 4: 'D', 5: 'B'},
+      3: {1: 'C', 2: 'D', 3: 'A', 4: 'B', 5: 'C', 6: 'D'},
+    };
+
+    final List<Map<String, dynamic>> sampleParts = [
+      {'id': 1, 'title': 'Part 1'},
+      {'id': 2, 'title': 'Part 2'},
+      {'id': 3, 'title': 'Part 3'},
+    ];
+
+    final Map<int, List<Map<String, dynamic>>> samplePartAnswers = {
+      1: [
+        {'questionNumber': 1, 'correctAnswer': 'A'},
+        {'questionNumber': 2, 'correctAnswer': 'B'},
+        {'questionNumber': 3, 'correctAnswer': 'C'},
+        {'questionNumber': 4, 'correctAnswer': 'D'},
+      ],
+      2: [
+        {'questionNumber': 1, 'correctAnswer': 'B'},
+        {'questionNumber': 2, 'correctAnswer': 'C'},
+        {'questionNumber': 3, 'correctAnswer': 'A'},
+        {'questionNumber': 4, 'correctAnswer': 'D'},
+        {'questionNumber': 5, 'correctAnswer': 'B'},
+      ],
+      3: [
+        {'questionNumber': 1, 'correctAnswer': 'C'},
+        {'questionNumber': 2, 'correctAnswer': 'D'},
+        {'questionNumber': 3, 'correctAnswer': 'A'},
+        {'questionNumber': 4, 'correctAnswer': 'B'},
+        {'questionNumber': 5, 'correctAnswer': 'C'},
+        {'questionNumber': 6, 'correctAnswer': 'D'},
+      ],
+    };
+
     return MaterialApp(
       title: 'Flutter App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: const FlashCardDone(), // Set FlashCardDone as the home screen
+      home: ReadingDone(
+        score: 7.5,
+        timeTaken: 3600, 
+        correctAnswersPerPart: sampleCorrectAnswers,
+        userAnswers: sampleUserAnswers,
+        parts: sampleParts,
+        partAnswers: samplePartAnswers,
+      ),
     );
   }
 }
