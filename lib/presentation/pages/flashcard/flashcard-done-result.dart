@@ -17,7 +17,7 @@ class _FlashCardDoneState extends State<FlashCardDone> with SingleTickerProvider
   late AnimationController _animationController;
   late Animation<double> _fadeInAnimation;
   late Animation<Offset> _slideAnimation;
-  late ConfettiController _confettiController;
+  // Removed confetti controller
   
   final double progressPercent = 0.46; // 46%
   
@@ -25,7 +25,7 @@ class _FlashCardDoneState extends State<FlashCardDone> with SingleTickerProvider
   void initState() {
     super.initState();
     
-    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
+    // Removed confetti controller initialization
     
     _animationController = AnimationController(
       vsync: this,
@@ -46,89 +46,63 @@ class _FlashCardDoneState extends State<FlashCardDone> with SingleTickerProvider
     ));
     
     _animationController.forward();
-    _confettiController.play();
+    // Removed confetti play
   }
   
   @override
   void dispose() {
     _animationController.dispose();
-    _confettiController.dispose();
+    // Removed confetti controller dispose
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background gradient
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment(0.00, -1.00),
-                end: Alignment(0, 1),
-                colors: [Colors.white, Color(0xFFC5E8FF)],
-              ),
-            ),
-            child: Column(
-              children: [
-                CustomAppBar(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: FadeTransition(
-                        opacity: _fadeInAnimation,
-                        child: SlideTransition(
-                          position: _slideAnimation,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildHeader(),
-                              _buildProgressSection(),
-                              _buildStatusCards(),
-                              _buildLearningSection(),
-                              _buildActionButton(),
-                              const SizedBox(height: 20),
-                            ],
-                          ),
-                        ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment(0.00, -1.00),
+            end: Alignment(0, 1),
+            colors: [Colors.white, Color(0xFFC5E8FF)],
+          ),
+        ),
+        child: Column(
+          children: [
+            CustomAppBar(),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: FadeTransition(
+                    opacity: _fadeInAnimation,
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(),
+                          _buildProgressSection(),
+                          _buildStatusCards(),
+                          _buildLearningSection(),
+                          _buildActionButton(),
+                          const SizedBox(height: 20),
+                        ],
                       ),
                     ),
                   ),
                 ),
-                BottomNavBar(
-                  currentIndex: 1, 
-                  onTap: (int index) {
-                    // Handle navigation
-                  },
-                ),
-              ],
+              ),
             ),
-          ),
-          
-          // Confetti effect
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirection: pi/2, // downward direction
-              maxBlastForce: 5,
-              minBlastForce: 1,
-              emissionFrequency: 0.05,
-              numberOfParticles: 20,
-              gravity: 0.1,
-              colors: const [
-                Colors.blue,
-                Colors.green,
-                Colors.pink,
-                Colors.orange,
-                Colors.purple
-              ],
+            BottomNavBar(
+              currentIndex: 1, 
+              onTap: (int index) {
+                // Handle navigation
+              },
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -221,17 +195,7 @@ class _FlashCardDoneState extends State<FlashCardDone> with SingleTickerProvider
               widgetIndicator: Container(
                 width: 24,
                 height: 24,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0067AC).withOpacity(0.3),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
+                
                 child: const Center(
                   child: Icon(
                     Icons.star,
@@ -389,29 +353,19 @@ class _FlashCardDoneState extends State<FlashCardDone> with SingleTickerProvider
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2196F3).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'Pick a method',
-                  style: TextStyle(
-                    color: Color(0xFF2196F3),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+             
             ],
           ),
         ),
 
-        Row(
-          children: [
-            Expanded(
-              child: _buildLearningCard(
+        // Optimized learning cards display
+        Container(
+          height: 230, // Fixed height for the container
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            children: [
+              _buildLearningCard(
                 title: 'FlashCard',
                 icon: Icons.style,
                 description: 'Learn with memory cards',
@@ -419,28 +373,25 @@ class _FlashCardDoneState extends State<FlashCardDone> with SingleTickerProvider
                 completedCount: '10',
                 recommended: true,
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildLearningCard(
+              const SizedBox(width: 12),
+              _buildLearningCard(
                 title: 'Type Words',
                 icon: Icons.keyboard,
                 description: 'Practice typing vocabulary',
                 color: const Color(0xFF2196F3),
                 completedCount: '18',
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildLearningCard(
+              const SizedBox(width: 12),
+              _buildLearningCard(
                 title: 'Quiz',
                 icon: Icons.quiz,
                 description: 'Test your knowledge',
                 color: const Color(0xFFF44336),
                 completedCount: '12',
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+            ],
+          ),
         ),
       ],
     );
@@ -455,7 +406,8 @@ class _FlashCardDoneState extends State<FlashCardDone> with SingleTickerProvider
     bool recommended = false,
   }) {
     return Container(
-      height: 170,
+      width: 160, // Slightly wider for better readability
+      margin: const EdgeInsets.only(bottom: 10), // Added margin for better spacing
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
