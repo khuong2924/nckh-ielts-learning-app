@@ -8,6 +8,8 @@ import '../../model/Vocabulary.dart';
 import 'flashcard-learning.dart';
 import 'learning-category.dart';
 import 'package:auth/presentation/pages/flashcard/learning-category-card.dart';
+import 'package:auth/presentation/pages/flashcard/flashcard-quiz.dart';
+import 'package:auth/presentation/pages/flashcard/flashcard-test-typing.dart';
 
 class VocabularyMain extends StatefulWidget {
   final String topicId;
@@ -184,6 +186,22 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
                       context,
                       MaterialPageRoute(
                         builder: (context) => FlashcardLearning(flashcardId: widget.topicId), // Sử dụng topicId
+                      ),
+                    );
+                  }
+                  else if (learningCategories[index].title == 'Gõ từ') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FlashcardTyping(), 
+                      ),
+                    );
+                  }
+                  else if (learningCategories[index].title == 'Trắc nghiệm') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FlashCardQuiz(),
                       ),
                     );
                   }
