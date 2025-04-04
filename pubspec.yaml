@@ -9,6 +9,8 @@ environment:
   sdk: '>=3.4.3 <4.0.0'
 
 dependencies:
+  confetti: ^0.7.0
+  lottie: ^2.3.2
   flutter_svg: ^2.0.5
   audioplayers: ^5.2.1
   flutter:
@@ -36,7 +38,6 @@ dependencies:
   flutter_calendar_carousel: ^2.4.4
   google_fonts: ^6.2.1
   percent_indicator: ^4.2.3
-  confetti: ^0.7.0
 
 dev_dependencies:
   flutter_test:

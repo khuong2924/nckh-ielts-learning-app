@@ -3,6 +3,9 @@ import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:auth/presentation/pages/test-page/viewanswer.dart';
+import 'dart:math' as math;
+import 'package:confetti/confetti.dart';
+import 'package:lottie/lottie.dart';
 
 import '../main-page/sample-test-home-page.dart';
 class ReadingDone extends StatefulWidget {
@@ -10,8 +13,8 @@ class ReadingDone extends StatefulWidget {
   final int timeTaken;
   final Map<int, int> correctAnswersPerPart;
   final Map<int, Map<int, String>> userAnswers;
-  final List<Map<String, dynamic>> parts; // Add this
-  final Map<int, List<Map<String, dynamic>>> partAnswers; // Add this
+  final List<Map<String, dynamic>> parts;
+  final Map<int, List<Map<String, dynamic>>> partAnswers;
 
   const ReadingDone({
     Key? key,
@@ -27,12 +30,46 @@ class ReadingDone extends StatefulWidget {
   State<ReadingDone> createState() => _ReadingDoneState();
 }
 
-class _ReadingDoneState extends State<ReadingDone> {
+class _ReadingDoneState extends State<ReadingDone> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
+  late ConfettiController _confettiController;
+  late AnimationController _animationController;
+  late Animation<double> _scoreAnimation;
+  
+  @override
+  void initState() {
+    super.initState();
+    
+ 
+    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
+    _confettiController.play();
+    
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+    
+    _scoreAnimation = Tween<double>(
+      begin: 0.0,
+      end: widget.score,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+    ));
+    
+    _animationController.forward();
+  }
+  
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
 
   double _calculateProgress(int part) {
     int correctAnswers = widget.correctAnswersPerPart[part] ?? 0;
-    int totalQuestions = widget.userAnswers.length; // Assuming userAnswers contains answers for all parts
+    int totalQuestions = widget.userAnswers[part]?.length ?? 0;
     return totalQuestions > 0 ? correctAnswers / totalQuestions : 0.0;
   }
 
@@ -40,44 +77,69 @@ class _ReadingDoneState extends State<ReadingDone> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFCFEBFF),
-      body: SafeArea(
-        child: Column(
-          children: [
-            CustomAppBar(
-              onNotificationTap: () {
-                // Handle notification
-              },
-            ),
-            _buildTitle(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    _buildCongrats(),
-                    const SizedBox(height: 10),
-                    _buildComment(),
-                    const SizedBox(height: 20),
-                    _buildBand(widget.score.toString()),
-                    const SizedBox(height: 20),
-                    _buildRoundContainer(),
-                    const SizedBox(height: 20),
-                    _buildButtons(),
-                    const SizedBox(height: 20),
-                  ],
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                CustomAppBar(
+                  onNotificationTap: () {
+                    // Handle notification
+                  },
                 ),
-              ),
+                _buildTitle(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: [
+                        _buildCongrats(),
+                        const SizedBox(height: 10),
+                        _buildComment(),
+                        const SizedBox(height: 20),
+                        _buildBand(),
+                        const SizedBox(height: 20),
+                        _buildTimeInfo(),
+                        const SizedBox(height: 20),
+                        _buildRoundContainer(),
+                        const SizedBox(height: 20),
+                        _buildButtons(),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                ),
+                BottomNavBar(
+                  currentIndex: _currentIndex,
+                  onTap: (index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
+                ),
+              ],
             ),
-            BottomNavBar(
-              currentIndex: _currentIndex,
-              onTap: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
+          ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              particleDrag: 0.05,
+              emissionFrequency: 0.05,
+              numberOfParticles: 20,
+              gravity: 0.1,
+              colors: const [
+                Colors.red,
+                Colors.blue,
+                Colors.yellow,
+                Colors.green,
+                Colors.purple,
+                Colors.orange,
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -113,83 +175,186 @@ class _ReadingDoneState extends State<ReadingDone> {
   }
 
   Widget _buildCongrats() {
-    return Align(
-      alignment: Alignment.center,
-      child: Text(
-        'CONGRATS',
-        style: const TextStyle(
-          color: Color(0xFFE33629),
-          fontSize: 40,
-          fontFamily: 'Jost',
-          fontWeight: FontWeight.w400,
-        ),
-      ),
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: const Duration(seconds: 1),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          child: const Text(
+            'CONGRATS',
+            style: TextStyle(
+              color: Color(0xFFE33629),
+              fontSize: 40,
+              fontFamily: 'Jost',
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2.0,
+              shadows: [
+                Shadow(
+                  blurRadius: 10.0,
+                  color: Color(0x80E33629),
+                  offset: Offset(2.0, 2.0),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildComment() {
-    return Align(
-      alignment: Alignment.center,
-      child: Text(
-        'You Just Completed',
-        style: const TextStyle(
-          color: Color(0xFFE0067AC),
-          fontSize: 14,
-          fontFamily: 'Jost',
-          fontWeight: FontWeight.w400,
-        ),
-      ),
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: const Duration(seconds: 1),
+      curve: Curves.easeInOut,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: const Text(
+            'You Just Completed',
+            style: TextStyle(
+              color: Color(0xFF0067AC),
+              fontSize: 16,
+              fontFamily: 'Jost',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildBand(String band) {
-    return Container(
-      width: 200,
-      height: 200,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF4681DA).withOpacity(0.4),
-            Color(0xFFE33629).withOpacity(0.4),
-          ],
-        ),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 190,
-            height: 190,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFF4681DA).withOpacity(0.4),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(bottom: 120),
-            child: Text(
-              'Band',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.white,
+  Widget _buildBand() {
+    return AnimatedBuilder(
+      animation: _scoreAnimation,
+      builder: (context, child) {
+        
+        final endAngle = 2 * math.pi * (math.max(0.1, _scoreAnimation.value) / 9);
+        
+        return Container(
+          width: 200,
+          height: 200,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blue.withOpacity(0.3),
+                blurRadius: 20,
+                spreadRadius: 5,
               ),
+            ],
+            gradient: SweepGradient(
+              center: Alignment.center,
+              startAngle: 0,
+              endAngle: endAngle, 
+              colors: const [
+                Color(0xFF4681DA),
+                Color(0xFF6A5AE0),
+                Color(0xFFE33629),
+                Color(0xFFFF9500),
+                Color(0xFF4681DA),
+              ],
             ),
           ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              Text(
-                band,
-                style: const TextStyle(
-                  fontSize: 50,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.9),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0, end: 2 * math.pi),
+                      duration: const Duration(seconds: 2),
+                      builder: (context, value, child) {
+                        return CustomPaint(
+                          painter: CircleProgressPainter(
+                            progress: value,
+                            color: const Color(0xFF4681DA),
+                          ),
+                          child: Container(
+                            width: 160,
+                            height: 160,
+                          ),
+                        );
+                      },
+                    ),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Band',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF0067AC),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          _scoreAnimation.value.toStringAsFixed(1),
+                          style: const TextStyle(
+                            fontSize: 50,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0067AC),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTimeInfo() {
+    final hours = widget.timeTaken ~/ 3600;
+    final minutes = (widget.timeTaken % 3600) ~/ 60;
+    final seconds = widget.timeTaken % 60;
+    
+    final timeString = '${hours > 0 ? '$hours hr ' : ''}${minutes > 0 ? '$minutes min ' : ''}${seconds > 0 ? '$seconds sec' : ''}';
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.timer,
+            color: Color(0xFF0067AC),
+            size: 24,
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'Time: $timeString',
+            style: const TextStyle(
+              color: Color(0xFF0067AC),
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -198,35 +363,52 @@ class _ReadingDoneState extends State<ReadingDone> {
 
   Widget _buildRoundContainer() {
     return Container(
-      height: 200,
+      height: 220,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Color(0xFF4681DA).withOpacity(0.28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF4681DA), Color(0xFF0067AC)],
+        ),
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4681DA).withOpacity(0.3),
+            blurRadius: 15,
+            spreadRadius: 2,
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(5.0),
         child: Container(
-          height: 200,
+          height: 220,
           width: double.infinity,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
           ),
-          child: Stack(
-            alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildProgress('1', _calculateProgress(1)),
-                      _buildProgress('2', _calculateProgress(2)),
-                      _buildProgress('3', _calculateProgress(3)),
-                    ],
+              const Padding(
+                padding: EdgeInsets.only(top: 15.0, bottom: 20.0),
+                child: Text(
+                  'Your Performance',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0067AC),
                   ),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildProgress('1', _calculateProgress(1)),
+                  _buildProgress('2', _calculateProgress(2)),
+                  _buildProgress('3', _calculateProgress(3)),
                 ],
               ),
             ],
@@ -237,43 +419,68 @@ class _ReadingDoneState extends State<ReadingDone> {
   }
 
   Widget _buildProgress(String numberPart, double progress) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Stack(
-          alignment: Alignment.center,
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: progress),
+      duration: const Duration(milliseconds: 1500),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              height: 50,
-              width: 50,
-              child: CircularProgressIndicator(
-                value: progress,
-                strokeWidth: 6.0,
-                backgroundColor: Color(0xFFE33629).withOpacity(0.4),
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE33629)),
-              ),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  height: 80,
+                  width: 80,
+                  child: CircularProgressIndicator(
+                    value: value,
+                    strokeWidth: 8.0,
+                    backgroundColor: const Color(0xFFE33629).withOpacity(0.2),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE33629)),
+                  ),
+                ),
+                Column(
+                  children: [
+                    Text(
+                      '${(value * 100).toInt()}%',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0067AC),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            Text(
-              '${(progress * 100).toInt()}%', // Display percentage
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0067AC),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0067AC).withOpacity(0.3),
+                    blurRadius: 5,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: Text(
+                'Part $numberPart',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Part $numberPart',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0067AC),
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -281,59 +488,136 @@ class _ReadingDoneState extends State<ReadingDone> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        ElevatedButton(
-          onPressed: () {
+        _buildAnimatedButton(
+          'Exit',
+          const Color(0xFF4681DA).withOpacity(0.69),
+          () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => HomePage()), // Điều hướng đến ComplaintPage
+              MaterialPageRoute(builder: (context) => HomePage()),
             );
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xFF4681DA).withOpacity(0.69),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          ),
-          child: const Text(
-            'Exit',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white,
-            ),
-          ),
         ),
         const SizedBox(width: 20),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ViewAnswersPage(
-                  parts: widget.parts, // Pass the actual parts data
-                  userAnswersPerPart: widget.userAnswers, // Pass user answers
-                  partAnswers: widget.partAnswers, // Pass the correct answers
-
+        _buildAnimatedButton(
+          'View Answer',
+          const Color(0xFF0067AC),
+          () {
+           
+            if (widget.parts.isNotEmpty && widget.userAnswers.isNotEmpty && widget.partAnswers.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ViewAnswersPage(
+                    parts: widget.parts,
+                    userAnswersPerPart: widget.userAnswers,
+                    partAnswers: widget.partAnswers,
+                  ),
                 ),
-              ),
-            );
+              );
+            } else {
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Cannot view answers: Missing data'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              print('Debug data:');
+              print('Parts: ${widget.parts}');
+              print('User Answers: ${widget.userAnswers}');
+              print('Part Answers: ${widget.partAnswers}');
+            }
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xFF0067AC),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          ),
-          child: const Text(
-            'View Answer',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white,
-            ),
-          ),
         ),
       ],
     );
   }
+
+  Widget _buildAnimatedButton(String text, Color color, VoidCallback onPressed) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          child: ElevatedButton(
+            onPressed: onPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              elevation: 5,
+              shadowColor: color.withOpacity(0.5),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Fix the icon color to be explicitly white
+                Icon(
+                  text == 'Exit' ? Icons.exit_to_app : Icons.visibility,
+                  size: 20,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white, // Explicitly set text color to white
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class CircleProgressPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  CircleProgressPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2;
+    
+    final paint = Paint()
+      ..color = color.withOpacity(0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    
+    
+    for (int i = 0; i < 3; i++) {
+      canvas.drawCircle(center, radius - (i * 3), paint);
+    }
+    
+
+    final arcPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+    
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2, // Start from top
+      progress,
+      false,
+      arcPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
