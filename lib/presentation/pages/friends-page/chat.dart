@@ -1,14 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
 
-import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 
 class Chat extends StatefulWidget {
@@ -18,7 +13,7 @@ class Chat extends StatefulWidget {
   const Chat({super.key, required this.friendId, required this.friendName});
 
   @override
-  State<Chat> createState() => _ChatState();
+  _ChatState createState() => _ChatState();
 }
 
 class _ChatState extends State<Chat> {
@@ -69,7 +64,7 @@ class _ChatState extends State<Chat> {
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!isMe)
-            CircleAvatar(
+            const CircleAvatar(
               backgroundImage: AssetImage('lib/images/shiba.jpg'),
               radius: 16,
             ),
@@ -113,6 +108,15 @@ class _ChatState extends State<Chat> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFCFEBFF),
+      appBar: AppBar(
+        title: Text(widget.friendName),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context); // Quay lại FriendsPage
+          },
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
