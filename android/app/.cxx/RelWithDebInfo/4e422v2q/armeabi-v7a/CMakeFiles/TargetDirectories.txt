@@ -1,0 +1,2 @@
+C:/Users/ADMIN/AndroidStudioProjects/nckh-ielts-learning-app/android/app/.cxx/RelWithDebInfo/4e422v2q/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/ADMIN/AndroidStudioProjects/nckh-ielts-learning-app/android/app/.cxx/RelWithDebInfo/4e422v2q/armeabi-v7a/CMakeFiles/rebuild_cache.dir

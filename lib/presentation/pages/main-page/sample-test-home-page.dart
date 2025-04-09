@@ -247,110 +247,174 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildSearchBar() {
-    return FadeTransition(
-      opacity: _animation,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 0.2),
-          end: Offset.zero,
-        ).animate(_animation),
-        child: Container(
-          height: 60,
-          decoration: ShapeDecoration(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
-            ),
-            shadows: [
-              BoxShadow(
-                color: const Color(0xFF000000).withOpacity(0.08),
-                blurRadius: 12,
-                offset: const Offset(0, 3),
-                spreadRadius: 0,
-              )
-            ],
-          ),
-          child: Row(
-            children: [
-              const SizedBox(width: 16),
-              const Icon(
-                Icons.search,
-                color: Color(0xFFB4BDC4),
-                size: 22,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    hintText: 'Search for tests',
-                    hintStyle: TextStyle(
-                      color: Color(0xFFB4BDC4),
-                      fontSize: 16,
-                      fontFamily: 'Mulish',
-                      fontWeight: FontWeight.w500,
+    final List<String> suggestions = _tests
+        .map((e) => e.title ?? '')
+        .where((title) =>
+        title.toLowerCase().contains(_searchController.text.toLowerCase()))
+        .toSet()
+        .take(5)
+        .toList();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Search bar
+            FadeTransition(
+              opacity: _animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.2),
+                  end: Offset.zero,
+                ).animate(_animation),
+                child: Container(
+                  width: constraints.maxWidth,
+                  height: 60,
+                  decoration: ShapeDecoration(
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
                     ),
+                    shadows: [
+                      BoxShadow(
+                        color: const Color(0xFF000000).withOpacity(0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
+                        spreadRadius: 0,
+                      )
+                    ],
                   ),
-                  onChanged: _filterTests,
-                  style: const TextStyle(
-                    color: Color(0xFF202244),
-                    fontSize: 16,
-                    fontFamily: 'Mulish',
-                    fontWeight: FontWeight.w500,
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 16),
+                      const Icon(
+                        Icons.search,
+                        color: Color(0xFFB4BDC4),
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            hintText: 'Search for tests',
+                            hintStyle: TextStyle(
+                              color: Color(0xFFB4BDC4),
+                              fontSize: 16,
+                              fontFamily: 'Mulish',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          onChanged: (value) {
+                            _filterTests(value);
+                          },
+                          style: const TextStyle(
+                            color: Color(0xFF202244),
+                            fontSize: 16,
+                            fontFamily: 'Mulish',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (_searchController.text.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            color: Color(0xFFB4BDC4),
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _searchController.clear();
+                              _filterTests("");
+                            });
+                          },
+                        ),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: 50,
+                        height: 40,
+                        margin: const EdgeInsets.only(right: 10),
+                        decoration: ShapeDecoration(
+                          color: const Color(0xFF0961F5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          shadows: [
+                            BoxShadow(
+                              color: const Color(0xFF0961F5).withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            )
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.search,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          onPressed: () {
+                            _filterTests(_searchController.text);
+                            FocusScope.of(context).unfocus();
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              if (_searchController.text.isNotEmpty)
-                IconButton(
-                  icon: const Icon(
-                    Icons.close,
-                    color: Color(0xFFB4BDC4),
-                    size: 20,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _searchController.clear();
-                      _filterTests("");
-                    });
-                  },
-                ),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                width: _searchController.text.isEmpty ? 50 : 50,
-                height: 40,
-                margin: const EdgeInsets.only(right: 10),
-                decoration: ShapeDecoration(
-                  color: const Color(0xFF0961F5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  shadows: [
+            ),
+            // Suggestion dropdown
+            if (_searchController.text.isNotEmpty && suggestions.isNotEmpty)
+              Container(
+                width: constraints.maxWidth,
+                margin: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF0961F5).withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    )
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
                   ],
                 ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.search,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                  onPressed: () {
-                    _filterTests(_searchController.text);
-                    FocusScope.of(context).unfocus();
-                  },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: suggestions.map((suggestion) {
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          _searchController.text = suggestion;
+                          _filterTests(suggestion);
+                          FocusScope.of(context).unfocus();
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text(
+                          suggestion,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF202244),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+          ],
+        );
+      },
     );
   }
+
 
   Widget _buildTestsList() {
     if (_isLoading) {
