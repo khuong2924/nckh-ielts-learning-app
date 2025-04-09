@@ -7,44 +7,43 @@ version: 1.0.0+1
 
 environment:
   sdk: '>=3.4.3 <4.0.0'
+
 dependencies:
+  confetti: ^0.7.0
+  lottie: ^2.3.2
+  flutter_svg: ^2.0.5
+  audioplayers: ^5.2.1
   flutter:
     sdk: flutter
-
-  file_picker: ^9.2.3
-  audioplayers: ^6.4.0
-  emoji_picker_flutter: ^4.3.0
-  flutter_markdown: ^0.7.6+2
-  record: ^6.0.0
-  flutter_tts: ^4.2.2
-  permission_handler: ^11.0.1
-  flutter_svg: ^2.0.5
-  flutter_calendar_carousel: ^2.4.4
-  fl_chart: ^0.70.2
-  google_fonts: ^6.2.1
-  percent_indicator: ^4.2.3
-  confetti: ^0.8.0
+  emoji_picker_flutter: ^1.6.3
   image_picker: ^1.0.4
-  supabase_flutter: ^2.8.3
-  cupertino_icons: ^1.0.6
+  record: ^4.4.4
+  permission_handler: ^11.0.1
+  file_picker: ^6.1.1
+  fl_chart: ^0.70.2
   firebase_core:
   firebase_auth:
+  flutter_tts: ^3.7.0
   cloud_firestore:
   sqflite: ^2.2.0
   path: ^1.8.3
-  shared_preferences:
+  supabase_flutter: ^2.8.3
+  cupertino_icons: ^1.0.6
   flutter_bloc:
   dio:
   get_it:
   dartz:
   logger:
+  shared_preferences:
+  flutter_calendar_carousel: ^2.4.4
+  google_fonts: ^6.2.1
+  percent_indicator: ^4.2.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^5.0.0
-
+  flutter_lints: ^3.0.0
 
 flutter:
 
