@@ -7,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:auth/presentation/pages/test-page/viewanswer.dart';
 
+import '../pages/writing/writing-submission.dart';
+
 class TestCard extends StatelessWidget {
   final String? title;
   final String? testType;
@@ -104,29 +106,45 @@ class TestCard extends StatelessWidget {
 
   Future<void> _navigateToViewAnswers(BuildContext context) async {
     final userId = await _getUserId();
-    final parts = await _getParts(testId!);
+    if (userId == null || testId == null) return;
 
-    if (userId == null || parts.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không tìm thấy dữ liệu')),
-      );
-      return;
+    if (testType == 'writing') {
+      final result = await Supabase.instance.client
+          .from('test_results')
+          .select('comment, time')
+          .eq('user_id', userId)
+          .eq('test_id', testId!)
+          .maybeSingle();
+
+      if (result != null && result['comment'] != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => IeltsFeedbackPage(
+              testId: testId!, // ✅ truyền đúng testId
+              submissions: const [], // ✅ không cần nếu đã có comment
+              elapsedTime: result['time'] ?? 0,
+              cachedComment: result['comment'], // ✅ phản hồi đã có sẵn
+            ),
+          ),
+        );
+        return;
+      }
+
     }
 
+    // fallback cho reading / listening
+    final parts = await _getParts(testId!);
     final Map<int, Map<int, String>> userAnswers = {};
     final Map<int, List<Map<String, dynamic>>> partAnswers = {};
 
-    // Lấy dữ liệu cho tất cả các phần
     for (var part in parts) {
-      final userAnswerMap = await _getUserAnswers(userId, part['id']);
+      final userAnswerMap = await _getUserAnswers(userId!, part['id']);
       final partAnswerList = await _getPartAnswers(part['id']);
 
       userAnswers[part['id']] = userAnswerMap;
       partAnswers[part['id']] = partAnswerList;
     }
-
-    debugPrint("Final userAnswers: $userAnswers");
-    debugPrint("Final partAnswers: $partAnswers");
 
     Navigator.push(
       context,
