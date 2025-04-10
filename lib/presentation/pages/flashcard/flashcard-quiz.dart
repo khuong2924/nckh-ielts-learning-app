@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
+import '../../model/Vocabulary.dart';
+import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FlashCardQuiz extends StatefulWidget {
-  const FlashCardQuiz({super.key});
+  final String topicId;
+
+  const FlashCardQuiz({super.key, required this.topicId});
 
   @override
   State<FlashCardQuiz> createState() => _FlashCardQuizState();
@@ -11,18 +16,67 @@ class FlashCardQuiz extends StatefulWidget {
 
 class _FlashCardQuizState extends State<FlashCardQuiz> {
   int _currentIndex = 1;
+  List<Vocabulary> vocabList = [];
+  int currentQuestionIndex = 0;
+  List<String> answerOptions = [];
+  int correctAnswerIndex = -1;
+  bool isLoading = true;
   int selectedAnswer = -1;
-  int correctAnswer = 3;
+  @override
+  void initState() {
+    super.initState();
+    fetchVocabulary();
+  }
 
-  List<String> answers = [
-    "A. Xin chào",
-    "B. Tạm biệt",
-    "C. Cảm ơn",
-    "D. Xin chào"
-  ];
+  Future<void> fetchVocabulary() async {
+    final response = await Supabase.instance.client
+        .from('flashcard_words')
+        .select()
+        .eq('flashcard_id', widget.topicId);
+
+    final data = response as List;
+
+    vocabList = data.map((e) => Vocabulary.fromMap(e)).toList();
+
+    if (vocabList.isNotEmpty) {
+      vocabList.shuffle();
+      loadQuestion(0);
+    }
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  void loadQuestion(int index) {
+    final currentVocab = vocabList[index];
+    final correctAnswer = currentVocab.vietnameseWord;
+
+    List<String> wrongAnswers = vocabList
+        .where((e) => e.id != currentVocab.id)
+        .map((e) => e.vietnameseWord)
+        .toList();
+    wrongAnswers.shuffle();
+    wrongAnswers = wrongAnswers.take(3).toList();
+
+    answerOptions = [...wrongAnswers, correctAnswer];
+    answerOptions.shuffle();
+    correctAnswerIndex = answerOptions.indexOf(correctAnswer);
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (vocabList.isEmpty) {
+      return Scaffold(
+        body: Center(child: Text("Không có từ vựng nào trong chủ đề này.")),
+      );
+    }
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -85,14 +139,60 @@ class _FlashCardQuizState extends State<FlashCardQuiz> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                "Question 3/10",
+                              Text(
+                                "Question ${currentQuestionIndex + 1}/${vocabList.length}",
                                 style: TextStyle(
-                                    fontSize: 14, color: Color(0xFF757575), fontWeight: FontWeight.bold),
+                                  fontSize: 14,
+                                  color: Color(0xFF757575),
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  // Xử lý Hint
+                                  final vocab = vocabList[currentQuestionIndex];
+
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) {
+                                      return AlertDialog(
+                                        title: const Text("Hint"),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              vocab.example ?? "Không có ví dụ",
+                                              style:
+                                                  const TextStyle(fontSize: 16),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            if (vocab.imageUrl != null &&
+                                                vocab.imageUrl!.isNotEmpty)
+                                              Image.network(
+                                                vocab.imageUrl!,
+                                                height: 150,
+                                                fit: BoxFit.contain,
+                                                errorBuilder: (context, error,
+                                                        stackTrace) =>
+                                                    const Text(
+                                                  "Không thể tải ảnh",
+                                                  style: TextStyle(
+                                                      color: Colors.red),
+                                                ),
+                                              )
+                                            else
+                                              const Text("Không có hình ảnh"),
+                                          ],
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            child: const Text("Đóng"),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
                                 },
                                 child: const Row(
                                   children: [
@@ -109,26 +209,32 @@ class _FlashCardQuizState extends State<FlashCardQuiz> {
 
                           Text(
                             "The corresponding meaning of the word:",
-                            style: TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.bold,),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           SizedBox(height: 10),
                           Text(
-                            "Hello",
+                            vocabList[currentQuestionIndex].englishWord,
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF0067AC),
                             ),
                           ),
+
                           const SizedBox(height: 10),
                           Column(
-                            children: List.generate(answers.length, (index) {
+                            children:
+                                List.generate(answerOptions.length, (index) {
                               Color borderColor = Colors.blue;
                               Color fillColor = Colors.white;
                               Color textColor = Colors.black;
 
                               if (selectedAnswer != -1) {
-                                if (index == correctAnswer) {
+                                if (index == correctAnswerIndex) {
                                   fillColor = Colors.green[100]!;
                                   borderColor = Colors.green;
                                   textColor = Colors.green;
@@ -141,9 +247,11 @@ class _FlashCardQuizState extends State<FlashCardQuiz> {
 
                               return GestureDetector(
                                 onTap: () {
-                                  setState(() {
-                                    selectedAnswer = index;
-                                  });
+                                  if (selectedAnswer == -1) {
+                                    setState(() {
+                                      selectedAnswer = index;
+                                    });
+                                  }
                                 },
                                 child: Container(
                                   margin:
@@ -160,7 +268,7 @@ class _FlashCardQuizState extends State<FlashCardQuiz> {
                                         MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        answers[index],
+                                        answerOptions[index],
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w500,
@@ -168,12 +276,20 @@ class _FlashCardQuizState extends State<FlashCardQuiz> {
                                         ),
                                       ),
                                       Icon(
-                                        selectedAnswer == index
-                                            ? (index == correctAnswer
+                                        selectedAnswer == -1
+                                            ? Icons.circle_outlined
+                                            : (index == correctAnswerIndex
                                                 ? Icons.check_circle
-                                                : Icons.cancel)
-                                            : Icons.circle_outlined,
-                                        color: textColor,
+                                                : (index == selectedAnswer
+                                                    ? Icons.cancel
+                                                    : Icons.circle_outlined)),
+                                        color: selectedAnswer == -1
+                                            ? Colors.grey
+                                            : (index == correctAnswerIndex
+                                                ? Colors.green
+                                                : (index == selectedAnswer
+                                                    ? Colors.red
+                                                    : Colors.grey)),
                                       ),
                                     ],
                                   ),
@@ -191,8 +307,32 @@ class _FlashCardQuizState extends State<FlashCardQuiz> {
                             child: ElevatedButton(
                               onPressed: () {
                                 setState(() {
-                                  selectedAnswer =
-                                      -1; // Reset lựa chọn cho câu tiếp theo
+                                  if (currentQuestionIndex <
+                                      vocabList.length - 1) {
+                                    currentQuestionIndex++;
+                                    loadQuestion(currentQuestionIndex);
+                                    selectedAnswer = -1;
+                                  } else {
+                                    // Hết câu hỏi – bạn có thể điều hướng sang màn hình kết quả hoặc hiển thị thông báo
+                                    showDialog(
+                                      context: context,
+                                      builder: (_) => AlertDialog(
+                                        title: Text("Quiz Finished"),
+                                        content: Text(
+                                            "You've reached the end of the quiz."),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                              Navigator.pop(
+                                                  context); // hoặc reset lại quiz
+                                            },
+                                            child: Text("OK"),
+                                          )
+                                        ],
+                                      ),
+                                    );
+                                  }
                                 });
                               },
                               style: ElevatedButton.styleFrom(
