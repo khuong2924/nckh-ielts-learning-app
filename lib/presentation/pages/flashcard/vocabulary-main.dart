@@ -20,7 +20,8 @@ class VocabularyMain extends StatefulWidget {
   State<VocabularyMain> createState() => _VocabularyScreenState();
 }
 
-class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProviderStateMixin {
+class _VocabularyScreenState extends State<VocabularyMain>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<Vocabulary> vocabularies = [];
   late String userId;
@@ -62,17 +63,19 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
         .select()
         .eq('flashcard_id', topicId);
 
-    final vocabList = (response as List).map((e) => Vocabulary(
-      id: e['id'],
-      englishWord: e['word'],
-      vietnameseWord: e['meaning'],
-      pronunciation: e['pronunciation'],
-      partOfSpeech: e['part_of_speech'],
-      example: e['example'],
-      audioUrl: e['audio_url'],
-      isLearned: false,
-      isFavorite: false,
-    )).toList();
+    final vocabList = (response as List)
+        .map((e) => Vocabulary(
+              id: e['id'],
+              englishWord: e['word'],
+              vietnameseWord: e['meaning'],
+              pronunciation: e['pronunciation'],
+              partOfSpeech: e['part_of_speech'],
+              example: e['example'],
+              audioUrl: e['audio_url'],
+              isLearned: false,
+              isFavorite: false,
+            ))
+        .toList();
 
     for (var vocab in vocabList) {
       final progressResponse = await Supabase.instance.client
@@ -86,9 +89,7 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
         vocab.isLearned = progressData['is_learned'] ?? false;
         vocab.isFavorite = progressData['is_favorite'] ?? false;
       } else {
-        await Supabase.instance.client
-            .from('user_vocabulary_progress')
-            .insert({
+        await Supabase.instance.client.from('user_vocabulary_progress').insert({
           'user_id': userId,
           'vocabulary_id': vocab.id,
           'is_learned': false,
@@ -137,9 +138,15 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
                           controller: _tabController,
                           children: [
                             _buildVocabularyList(vocabularies),
-                            _buildVocabularyList(vocabularies.where((v) => !v.isLearned).toList()),
-                            _buildVocabularyList(vocabularies.where((v) => v.isLearned).toList()),
-                            _buildVocabularyList(vocabularies.where((v) => v.isFavorite).toList()),
+                            _buildVocabularyList(vocabularies
+                                .where((v) => !v.isLearned)
+                                .toList()),
+                            _buildVocabularyList(vocabularies
+                                .where((v) => v.isLearned)
+                                .toList()),
+                            _buildVocabularyList(vocabularies
+                                .where((v) => v.isFavorite)
+                                .toList()),
                           ],
                         ),
                       ),
@@ -185,23 +192,24 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => FlashcardLearning(flashcardId: widget.topicId), // Sử dụng topicId
+                        builder: (context) => FlashcardLearning(
+                            flashcardId: widget.topicId), // Sử dụng topicId
                       ),
                     );
-                  }
-                  else if (learningCategories[index].title == 'Gõ từ') {
+                  } else if (learningCategories[index].title == 'Gõ từ') {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => FlashcardTyping(), 
+                        builder: (context) =>
+                            FlashcardTyping(topicId: widget.topicId),
                       ),
                     );
-                  }
-                  else if (learningCategories[index].title == 'Trắc nghiệm') {
+                  } else if (learningCategories[index].title == 'Trắc nghiệm') {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => FlashCardQuiz(),
+                        builder: (context) =>
+                            FlashCardQuiz(topicId: widget.topicId),
                       ),
                     );
                   }
@@ -281,9 +289,7 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
                 isLearned: value,
               );
 
-              Supabase.instance.client
-                  .from('user_vocabulary_progress')
-                  .upsert({
+              Supabase.instance.client.from('user_vocabulary_progress').upsert({
                 'user_id': userId,
                 'vocabulary_id': items[index].id,
                 'is_learned': value,
@@ -297,9 +303,7 @@ class _VocabularyScreenState extends State<VocabularyMain> with SingleTickerProv
                 isFavorite: value,
               );
 
-              Supabase.instance.client
-                  .from('user_vocabulary_progress')
-                  .upsert({
+              Supabase.instance.client.from('user_vocabulary_progress').upsert({
                 'user_id': userId,
                 'vocabulary_id': items[index].id,
                 'is_favorite': value,

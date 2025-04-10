@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
+import '../../model/Vocabulary.dart';
 
 class FlashcardTyping extends StatefulWidget {
-  const FlashcardTyping({super.key});
+  final String topicId;
+  const FlashcardTyping({super.key, required this.topicId});
 
   @override
   State<FlashcardTyping> createState() => _FlashcardTypingState();
@@ -14,19 +17,84 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
   final TextEditingController _answerController = TextEditingController();
   bool _isCorrect = false;
   bool _submitted = false;
-  final String question = "Hello";
-  final String correctAnswer = "Xin chào";
+  List<Vocabulary> vocabList = [];
+  int currentQuestionIndex = 0;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchVocabulary();
+  }
+
+  Future<void> fetchVocabulary() async {
+    final response = await Supabase.instance.client
+        .from('flashcard_words')
+        .select()
+        .eq('flashcard_id', widget.topicId);
+
+    final data = response as List;
+
+    vocabList = data.map((e) => Vocabulary.fromMap(e)).toList();
+    vocabList.shuffle();
+
+    setState(() {
+      isLoading = false;
+    });
+  }
 
   void checkAnswer() {
     setState(() {
       _submitted = true;
       _isCorrect = _answerController.text.trim().toLowerCase() ==
-          correctAnswer.toLowerCase();
+          vocabList[currentQuestionIndex].vietnameseWord.toLowerCase();
     });
+  }
+
+  void nextQuestion() {
+    if (currentQuestionIndex < vocabList.length - 1) {
+      setState(() {
+        currentQuestionIndex++;
+        _submitted = false;
+        _isCorrect = false;
+        _answerController.clear();
+      });
+    } else {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text("Quiz Finished"),
+          content: Text("You've reached the end of the quiz."),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: Text("OK"),
+            )
+          ],
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (vocabList.isEmpty) {
+      return Scaffold(
+        body: Center(child: Text("Không có từ vựng nào trong chủ đề này.")),
+      );
+    }
+
+    final currentVocab = vocabList[currentQuestionIndex];
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -39,9 +107,7 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
         child: SafeArea(
           child: Column(
             children: [
-              CustomAppBar(
-                onNotificationTap: () {},
-              ),
+              CustomAppBar(onNotificationTap: () {}),
               Row(
                 children: [
                   IconButton(
@@ -85,13 +151,56 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("Question 3/10",
-                                    style: TextStyle(
+                                Text(
+                                    "Question ${currentQuestionIndex + 1}/${vocabList.length}",
+                                    style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16)),
                                 GestureDetector(
-                                  onTap: () {},
-                                  child: Row(
+                                  onTap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (_) => AlertDialog(
+                                        title: const Text("Hint"),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              currentVocab.example ??
+                                                  "Không có ví dụ",
+                                              style:
+                                                  const TextStyle(fontSize: 16),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            if (currentVocab.imageUrl != null &&
+                                                currentVocab
+                                                    .imageUrl!.isNotEmpty)
+                                              Image.network(
+                                                currentVocab.imageUrl!,
+                                                height: 150,
+                                                fit: BoxFit.contain,
+                                                errorBuilder: (context, error,
+                                                        stackTrace) =>
+                                                    const Text(
+                                                        "Không thể tải ảnh",
+                                                        style: TextStyle(
+                                                            color: Colors.red)),
+                                              )
+                                            else
+                                              const Text("Không có hình ảnh"),
+                                          ],
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            child: const Text("Đóng"),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  child: const Row(
                                     children: [
                                       Icon(Icons.lightbulb_outline,
                                           color: Colors.red),
@@ -104,14 +213,12 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
                               ],
                             ),
                             const SizedBox(height: 10),
-                            Text(
-                              "The corresponding meaning of the word:",
-                              style: TextStyle(fontSize: 16),
-                            ),
+                            const Text("The corresponding meaning of the word:",
+                                style: TextStyle(fontSize: 16)),
                             const SizedBox(height: 10),
                             Text(
-                              question,
-                              style: TextStyle(
+                              currentVocab.englishWord,
+                              style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.blue),
@@ -119,6 +226,7 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
                             const SizedBox(height: 20),
                             TextField(
                               controller: _answerController,
+                              enabled: !_submitted,
                               decoration: InputDecoration(
                                 hintText: "Type your answer here...",
                                 border: OutlineInputBorder(
@@ -142,20 +250,22 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
                                         size: 24,
                                       ),
                                       const SizedBox(width: 10),
-                                      Text(
-                                        _isCorrect
-                                            ? "Correct!"
-                                            : "Wrong! Correct answer: $correctAnswer",
-                                        style: TextStyle(
-                                          color: _isCorrect
-                                              ? Colors.green
-                                              : Colors.red,
-                                          fontWeight: FontWeight.bold,
+                                      Flexible(
+                                        child: Text(
+                                          _isCorrect
+                                              ? "Correct!"
+                                              : "Wrong! Correct answer: ${currentVocab.vietnameseWord}",
+                                          style: TextStyle(
+                                            color: _isCorrect
+                                                ? Colors.green
+                                                : Colors.red,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       )
                                     ],
                                   )
-                                : SizedBox.shrink(),
+                                : const SizedBox.shrink(),
                             const SizedBox(height: 20),
                             SizedBox(
                               width: double.infinity,
@@ -163,15 +273,18 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
                                 style: ElevatedButton.styleFrom(
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 15),
-                                  backgroundColor: Colors.blueAccent,
+                                  backgroundColor: _submitted
+                                      ? Colors.green
+                                      : Colors.blueAccent,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                onPressed: checkAnswer,
-                                child: const Text(
-                                  "Submit",
-                                  style: TextStyle(
+                                onPressed:
+                                    _submitted ? nextQuestion : checkAnswer,
+                                child: Text(
+                                  _submitted ? "Next Question" : "Submit",
+                                  style: const TextStyle(
                                       fontSize: 18, color: Colors.white),
                                 ),
                               ),
