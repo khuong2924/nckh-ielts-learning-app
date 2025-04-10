@@ -19,7 +19,7 @@ dependencies:
   image_picker: ^1.0.4
   record: ^4.4.4
   permission_handler: ^11.0.1
-  file_picker: ^6.1.1
+
   fl_chart: ^0.70.2
   firebase_core:
   firebase_auth:
@@ -38,10 +38,15 @@ dependencies:
   flutter_calendar_carousel: ^2.4.4
   google_fonts: ^6.2.1
   percent_indicator: ^4.2.3
-
+  flutter_markdown: ^0.6.18
 dev_dependencies:
   flutter_test:
     sdk: flutter
+dependency_overrides:
+  file_picker:
+    git:
+      url: https://github.com/miguelpruivo/flutter_file_picker.git
+      ref: master
 
   flutter_lints: ^3.0.0
 

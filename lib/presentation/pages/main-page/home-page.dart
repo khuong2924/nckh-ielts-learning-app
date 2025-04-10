@@ -1,21 +1,21 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:auth/presentation/pages/account-management/signin.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-
 import '../../components/BottomNavBar.dart';
+import '../../components/ChatSupport.dart';
 import '../../components/CustomAppBar.dart';
+import '../account-management/signin.dart';
 
 class HomeLoad extends StatefulWidget {
   const HomeLoad({super.key});
 
   @override
-  State<StatefulWidget> createState() => _HomeLoad();
+  State<HomeLoad> createState() => _HomeLoadState();
 }
 
-class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
+class _HomeLoadState extends State<HomeLoad> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _animationController;
   late Animation<double> _animation;
@@ -27,10 +27,7 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    _animation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    );
+    _animation = CurvedAnimation(parent: _animationController, curve: Curves.easeInOut);
     _animationController.forward();
   }
 
@@ -42,10 +39,9 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
 
   void _signOut() async {
     await FirebaseAuth.instance.signOut();
-
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_logged_in', false);
     await prefs.remove('user_id');
+    await prefs.setBool('is_logged_in', false);
 
     Navigator.pushReplacement(
       context,
@@ -57,46 +53,70 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            CustomAppBar(
-              onMenuTap: _signOut,
-              onNotificationTap: () {
-                // Xử lý notification
-              },
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: FadeTransition(
-                  opacity: _animation,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildWelcomeSection(),
-                        const SizedBox(height: 24),
-                        _buildStreakCard(),
-                        const SizedBox(height: 30),
-                        _buildRecommendationsSection(),
-                      ],
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                CustomAppBar(
+                  onMenuTap: _signOut,
+                  onNotificationTap: () {},
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: FadeTransition(
+                      opacity: _animation,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildWelcomeSection(),
+                            const SizedBox(height: 24),
+                            _buildStreakCard(),
+                            const SizedBox(height: 30),
+                            _buildRecommendationsSection(),
+                            const SizedBox(height: 80), // tránh bị FAB che
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+                BottomNavBar(
+                  currentIndex: _currentIndex,
+                  onTap: (index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
+                ),
+              ],
             ),
-            BottomNavBar(
-              currentIndex: _currentIndex,
-              onTap: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
+          ),
+
+          // FloatingActionButton tại đúng vị trí
+          Positioned(
+            bottom: 120,
+            right: 16,
+            child: FloatingActionButton(
+              backgroundColor: const Color(0xff2A4ECA),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  builder: (_) => const ChatSupportSheet(),
+                );
               },
+              child: const Icon(Icons.chat_bubble_outline),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -105,9 +125,9 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.only(top: 16, bottom: 5),
-          child: const Text(
+        const Padding(
+          padding: EdgeInsets.only(top: 16, bottom: 5),
+          child: Text(
             'Are you ready for',
             style: TextStyle(
               fontSize: 30,
@@ -117,16 +137,13 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
             ),
           ),
         ),
-        Container(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: const Text(
-            'our IELTS journey?',
-            style: TextStyle(
-              fontSize: 30,
-              color: Color(0xff0067ac),
-              fontFamily: 'Montserrat-Bold',
-              height: 1.2,
-            ),
+        const Text(
+          'our IELTS journey?',
+          style: TextStyle(
+            fontSize: 30,
+            color: Color(0xff0067ac),
+            fontFamily: 'Montserrat-Bold',
+            height: 1.2,
           ),
         ),
         Container(
@@ -142,16 +159,13 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildStreakCard() {
-    // Get current date in a proper format
-    final now = DateTime.now();
-    final formattedDate = DateFormat('dd/MM/yyyy').format(now);
-    
+    final formattedDate = DateFormat('dd/MM/yyyy').format(DateTime.now());
+
     return Container(
       padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(top: 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
           colors: [Color(0xFF55ACEE), Color(0xFF3B76C4)],
         ),
         borderRadius: BorderRadius.circular(22),
@@ -160,7 +174,6 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
             color: const Color(0xFF55ACEE).withOpacity(0.3),
             offset: const Offset(0, 5),
             blurRadius: 10,
-            spreadRadius: 0,
           ),
         ],
       ),
@@ -176,25 +189,16 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
                     fontSize: 16,
                     color: Colors.white,
                     fontFamily: 'Montserrat-Bold',
-                    height: 1.4,
                   ),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.calendar_today_rounded,
-                      size: 14,
-                      color: Colors.white70,
-                    ),
+                    const Icon(Icons.calendar_today, size: 14, color: Colors.white70),
                     const SizedBox(width: 6),
                     Text(
                       formattedDate,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.white70,
-                        fontFamily: 'Montserrat-Medium',
-                      ),
+                      style: const TextStyle(color: Colors.white70),
                     ),
                   ],
                 ),
@@ -208,27 +212,20 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
                   child: const Text(
                     'Keep it up! 🔥',
                     style: TextStyle(
-                      fontSize: 12,
                       color: Color(0xFF3B76C4),
                       fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: SvgPicture.asset(
-              'lib/icons/ic-graph.svg',
-              width: 84,
-              height: 84,
-              color: Colors.white, // Use color instead of colorFilter
-            ),
+          SvgPicture.asset(
+            'lib/icons/ic-graph.svg',
+            width: 84,
+            height: 84,
+            color: Colors.white,
           ),
         ],
       ),
@@ -244,11 +241,7 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
           children: [
             const Text(
               'Today\'s recommendations',
-              style: TextStyle(
-                fontSize: 20,
-                color: Colors.black,
-                fontFamily: 'Montserrat-Bold',
-              ),
+              style: TextStyle(fontSize: 20, fontFamily: 'Montserrat-Bold'),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -293,7 +286,6 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
           borderColor: const Color(0xFFFFAB40),
           isLocked: true,
         ),
-        const SizedBox(height: 30),
       ],
     );
   }
@@ -332,28 +324,11 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
                 decoration: BoxDecoration(
                   color: const Color(0xff28273e),
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xff28273e).withOpacity(0.3),
-                      offset: const Offset(0, 3),
-                      blurRadius: 6,
-                    ),
-                  ],
                 ),
                 child: Center(
                   child: isLocked
-                      ? SvgPicture.asset(
-                    iconPath,
-                    width: 28,
-                    height: 28,
-                    color: Colors.white, // Use color instead of colorFilter
-                  )
-                      : Image.asset(
-                    iconPath,
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.contain,
-                  ),
+                      ? SvgPicture.asset(iconPath, width: 28, height: 28, color: Colors.white)
+                      : Image.asset(iconPath, width: 40, height: 40, fit: BoxFit.contain),
                 ),
               ),
               const SizedBox(width: 16),
@@ -361,13 +336,7 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontFamily: 'Montserrat-SemiBold',
-                      ),
-                    ),
+                    Text(title, style: const TextStyle(fontSize: 16, fontFamily: 'Montserrat-SemiBold')),
                     const SizedBox(height: 6),
                     Row(
                       children: [
@@ -394,8 +363,8 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
                               color: score != null
                                   ? const Color(0xffe33629).withOpacity(0.1)
                                   : status == "Premium"
-                                      ? const Color(0xFFFFAB40).withOpacity(0.1)
-                                      : const Color(0xff55ACEE).withOpacity(0.1),
+                                  ? const Color(0xFFFFAB40).withOpacity(0.1)
+                                  : const Color(0xff55ACEE).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -405,8 +374,8 @@ class _HomeLoad extends State<HomeLoad> with SingleTickerProviderStateMixin {
                                 color: score != null
                                     ? const Color(0xffe33629)
                                     : status == "Premium"
-                                        ? const Color(0xFFFFAB40)
-                                        : const Color(0xff55ACEE),
+                                    ? const Color(0xFFFFAB40)
+                                    : const Color(0xff55ACEE),
                                 fontFamily: 'Montserrat-Bold',
                               ),
                             ),

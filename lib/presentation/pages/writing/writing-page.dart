@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:auth/presentation/pages/writing/writing-submission.dart';
+import 'writing-submission.dart'; // <-- Đừng quên đổi tên đúng nếu bạn lưu tên khác
 
 class WritingPage extends StatefulWidget {
   final int testId;
@@ -33,7 +33,7 @@ class _WritingPageState extends State<WritingPage> {
   }
 
   Future<void> _loadUserId() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
     userId = prefs.getString('user_id') ?? '';
   }
 
@@ -59,7 +59,7 @@ class _WritingPageState extends State<WritingPage> {
   }
 
   void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() => elapsedTime++);
     });
   }
@@ -74,18 +74,53 @@ class _WritingPageState extends State<WritingPage> {
       return;
     }
 
-    List<Map<String, String>> submissions = parts.map((part) {
-      return {
-        "task_description": part['part_description'].toString(), // Ensure it's a String
-        "user_answer": userAnswers[part['id']]?.toString() ?? '' // Ensure it's a String
-      };
-    }).toList();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id') ?? '';
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => IeltsFeedbackPage(submissions: submissions)),
-    );
+      for (var part in parts) {
+        final partId = part['id'];
+        final answer = userAnswers[partId]?.trim() ?? '';
+
+        // Chỉ lưu nếu có dữ liệu
+        if (answer.isNotEmpty) {
+          await Supabase.instance.client.from('user_answers').insert({
+            'user_id': userId,
+            'part_id': partId,
+            'question_number': 1, // Vì mỗi part của writing chỉ có 1 câu
+            'user_answer': answer,
+            'is_correct': null, // Không áp dụng với writing
+          });
+        }
+      }
+
+      // Chuyển sang màn hình phản hồi
+      final submissions = parts.map((part) {
+        return {
+          "task_description": (part['part_description'] ?? '').toString(),
+          "user_answer": (userAnswers[part['id']] ?? '').toString(),
+        };
+      }).toList();
+
+      _timer?.cancel();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => IeltsFeedbackPage(
+            submissions: submissions,
+            elapsedTime: elapsedTime,
+            testId: widget.testId, // ✅ truyền đúng testId gốc
+          ),
+        ),
+      );
+
+    } catch (e) {
+      _showSnackBar("Error saving answers: ${e.toString()}");
+    }
   }
+
+
 
   String _formatTime(int seconds) {
     final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
@@ -110,7 +145,8 @@ class _WritingPageState extends State<WritingPage> {
           ),
         ],
       ),
-    ) ?? false;
+    ) ??
+        false;
   }
 
   @override
@@ -160,7 +196,8 @@ class PartWidget extends StatefulWidget {
   final String userAnswer;
   final Function(String) onAnswerChanged;
 
-  const PartWidget({Key? key, required this.part, required this.userAnswer, required this.onAnswerChanged}) : super(key: key);
+  const PartWidget({Key? key, required this.part, required this.userAnswer, required this.onAnswerChanged})
+      : super(key: key);
 
   @override
   _PartWidgetState createState() => _PartWidgetState();
@@ -191,20 +228,20 @@ class _PartWidgetState extends State<PartWidget> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.part['part_title'] ?? 'Untitled Part',
+              widget.part['part_title'] ?? 'Untitled Task',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            if (widget.part['image_url']?.isNotEmpty ?? false)
+            if ((widget.part['image_url'] ?? '').toString().isNotEmpty)
               Image.network(widget.part['image_url'], height: 200, fit: BoxFit.cover),
             const SizedBox(height: 10),
-            Text(widget.part['part_description'] ?? 'No description'),
+            Text(widget.part['part_description'] ?? 'No description available.'),
             const SizedBox(height: 10),
             TextField(
               controller: _controller,
               onChanged: widget.onAnswerChanged,
               decoration: const InputDecoration(border: OutlineInputBorder()),
-              maxLines: 3,
+              maxLines: 8,
             ),
           ],
         ),
