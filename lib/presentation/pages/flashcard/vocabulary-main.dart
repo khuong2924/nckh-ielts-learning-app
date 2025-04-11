@@ -48,15 +48,15 @@ class _VocabularyScreenState extends State<VocabularyMain>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _loadUserId();
+    _loadUserData();
   }
 
-  Future<void> _loadUserId() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+  Future<void> _loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
     userId = prefs.getString('user_id') ?? '';
     await _loadVocabularyForTopic(widget.topicId);
+    await ensureFlashcardProgressInitialized(widget.topicId, userId);
   }
-
   Future<void> _loadVocabularyForTopic(String topicId) async {
     final response = await Supabase.instance.client
         .from('flashcard_words')
@@ -65,16 +65,16 @@ class _VocabularyScreenState extends State<VocabularyMain>
 
     final vocabList = (response as List)
         .map((e) => Vocabulary(
-              id: e['id'],
-              englishWord: e['word'],
-              vietnameseWord: e['meaning'],
-              pronunciation: e['pronunciation'],
-              partOfSpeech: e['part_of_speech'],
-              example: e['example'],
-              audioUrl: e['audio_url'],
-              isLearned: false,
-              isFavorite: false,
-            ))
+      id: e['id'],
+      englishWord: e['word'],
+      meaning: e['meaning'],
+      pronunciation: e['pronunciation'],
+      partOfSpeech: e['part_of_speech'],
+      example: e['example'],
+      audioUrl: e['audio_url'],
+      isLearned: false,
+      isFavorite: false,
+    ))
         .toList();
 
     for (var vocab in vocabList) {
@@ -89,12 +89,15 @@ class _VocabularyScreenState extends State<VocabularyMain>
         vocab.isLearned = progressData['is_learned'] ?? false;
         vocab.isFavorite = progressData['is_favorite'] ?? false;
       } else {
-        await Supabase.instance.client.from('user_vocabulary_progress').insert({
+        // ✅ Dùng upsert để tránh duplicate, nếu có race condition
+        await Supabase.instance.client
+            .from('user_vocabulary_progress')
+            .upsert({
           'user_id': userId,
           'vocabulary_id': vocab.id,
           'is_learned': false,
           'is_favorite': false,
-        });
+        }, onConflict: 'user_id,vocabulary_id',);
       }
     }
 
@@ -102,12 +105,33 @@ class _VocabularyScreenState extends State<VocabularyMain>
       vocabularies = vocabList;
     });
   }
+  Future<void> ensureFlashcardProgressInitialized(String flashcardId, String userId) async {
+    final existing = await Supabase.instance.client
+        .from('flashcards_progress')
+        .select()
+        .eq('flashcard_id', flashcardId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (existing == null) {
+      await Supabase.instance.client.from('flashcards_progress').insert({
+        'flashcard_id': flashcardId,
+        'user_id': userId,
+        'progress': 0,
+      });
+    }
+  }
+
 
   @override
   void dispose() {
-    _tabController.dispose();
+    updateFlashcardProgress(
+      flashcardId: widget.topicId,
+      userId: userId,
+    );
     super.dispose();
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +178,13 @@ class _VocabularyScreenState extends State<VocabularyMain>
                   ),
                 ),
               ),
-              BottomNavBar(currentIndex: 1, onTap: (int index) {}),
+              BottomNavBar(
+                currentIndex: 1,
+                onTap: (index) async {
+                  await updateFlashcardProgress(flashcardId: widget.topicId, userId: userId);
+                },
+              ),
+
             ],
           ),
         ),
@@ -186,7 +216,7 @@ class _VocabularyScreenState extends State<VocabularyMain>
             itemBuilder: (context, index) {
               return LearningCategoryCard(
                 category: learningCategories[index],
-                onTap: () {
+                onTap: () async {
                   if (learningCategories[index].title == 'FlashCard') {
                     // Điều hướng đến FlashcardLearning với ID topic
                     Navigator.push(
@@ -197,21 +227,28 @@ class _VocabularyScreenState extends State<VocabularyMain>
                       ),
                     );
                   } else if (learningCategories[index].title == 'Gõ từ') {
-                    Navigator.push(
+                    final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            FlashcardTyping(topicId: widget.topicId),
+                        builder: (context) => FlashcardTyping(topicId: widget.topicId),
                       ),
                     );
+
+                    if (result == true) {
+                      _loadVocabularyForTopic(widget.topicId); // reload lại dữ liệu
+                    }
                   } else if (learningCategories[index].title == 'Trắc nghiệm') {
-                    Navigator.push(
+                    final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            FlashCardQuiz(topicId: widget.topicId),
+                        builder: (context) => FlashCardQuiz(topicId: widget.topicId),
                       ),
                     );
+
+                    if (result == true) {
+                      _loadVocabularyForTopic(widget.topicId); // Reload lại dữ liệu học
+                    }
+
                   }
                 },
               );
@@ -238,13 +275,6 @@ class _VocabularyScreenState extends State<VocabularyMain>
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF202244),
                 ),
-              ),
-              IconButton(
-                icon: Icon(Icons.add_circle_outline),
-                color: Color(0xFF0067AC),
-                onPressed: () {
-                  // Handle add vocabulary
-                },
               ),
             ],
           ),
@@ -274,6 +304,40 @@ class _VocabularyScreenState extends State<VocabularyMain>
       ],
     );
   }
+  Future<void> updateFlashcardProgress({
+    required String flashcardId,
+    required String userId,
+  }) async {
+    // Lấy danh sách từ vựng thuộc flashcard
+    final wordIdsResponse = await Supabase.instance.client
+        .from('flashcard_words')
+        .select('id')
+        .eq('flashcard_id', flashcardId);
+
+    final wordIds = (wordIdsResponse as List)
+        .map((e) => e['id'] as String)
+        .toList();
+
+    if (wordIds.isEmpty) return;
+
+    // Đếm số từ đã học
+    final learnedCountResponse = await Supabase.instance.client
+        .from('user_vocabulary_progress')
+        .select('vocabulary_id')
+        .inFilter('vocabulary_id', wordIds)
+        .eq('user_id', userId)
+        .eq('is_learned', true);
+
+    final learnedCount = learnedCountResponse.length;
+    // Cập nhật flashcards_progress
+    await Supabase.instance.client
+        .from('flashcards_progress')
+        .update({'progress': learnedCount})
+        .match({
+      'user_id': userId,
+      'flashcard_id': flashcardId,
+    });
+  }
 
   Widget _buildVocabularyList(List<Vocabulary> items) {
     return ListView.builder(
@@ -282,36 +346,45 @@ class _VocabularyScreenState extends State<VocabularyMain>
       itemBuilder: (context, index) {
         return VocabularyItem(
           vocabulary: items[index],
-          onLearningStatusChanged: (value) {
+          onLearningStatusChanged: (value) async {
             setState(() {
               final vocabIndex = vocabularies.indexOf(items[index]);
-              vocabularies[vocabIndex] = vocabularies[vocabIndex].copyWith(
-                isLearned: value,
-              );
+              vocabularies[vocabIndex] = vocabularies[vocabIndex].copyWith(isLearned: value);
+            });
 
-              Supabase.instance.client.from('user_vocabulary_progress').upsert({
-                'user_id': userId,
-                'vocabulary_id': items[index].id,
-                'is_learned': value,
-              });
+            final updated = vocabularies[index];
+            await Supabase.instance.client
+                .from('user_vocabulary_progress')
+                .update({
+              'is_learned': updated.isLearned,
+              'is_favorite': updated.isFavorite,
+            })
+                .match({
+              'user_id': userId,
+              'vocabulary_id': updated.id,
             });
           },
-          onFavoriteChanged: (value) {
+          onFavoriteChanged: (value) async {
             setState(() {
               final vocabIndex = vocabularies.indexOf(items[index]);
-              vocabularies[vocabIndex] = vocabularies[vocabIndex].copyWith(
-                isFavorite: value,
-              );
+              vocabularies[vocabIndex] = vocabularies[vocabIndex].copyWith(isFavorite: value);
+            });
 
-              Supabase.instance.client.from('user_vocabulary_progress').upsert({
-                'user_id': userId,
-                'vocabulary_id': items[index].id,
-                'is_favorite': value,
-              });
+            final updated = vocabularies[index];
+            await Supabase.instance.client
+                .from('user_vocabulary_progress')
+                .update({
+              'is_learned': updated.isLearned,
+              'is_favorite': updated.isFavorite,
+            })
+                .match({
+              'user_id': userId,
+              'vocabulary_id': updated.id,
             });
           },
         );
       },
     );
   }
+
 }

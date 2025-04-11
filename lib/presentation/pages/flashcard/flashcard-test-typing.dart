@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
@@ -20,12 +21,48 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
   List<Vocabulary> vocabList = [];
   int currentQuestionIndex = 0;
   bool isLoading = true;
+  Set<String> incorrectVocabIds = {}; // lưu ID các từ sai
+
+  late String userId;
 
   @override
   void initState() {
     super.initState();
+    loadUserId();
+  }
+
+  Future<void> loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    userId = prefs.getString('user_id') ?? '';
     fetchVocabulary();
   }
+
+  void checkAnswer() async {
+    setState(() {
+      _submitted = true;
+      final correct = _answerController.text.trim().toLowerCase() ==
+          vocabList[currentQuestionIndex].englishWord.toLowerCase();
+      _isCorrect = correct;
+    });
+
+    final vocabId = vocabList[currentQuestionIndex].id;
+
+    if (!_isCorrect) {
+      incorrectVocabIds.add(vocabId);
+    } else {
+      incorrectVocabIds.remove(vocabId);
+
+      // ✅ Cập nhật Supabase: đánh dấu đã học
+      await Supabase.instance.client
+          .from('user_vocabulary_progress')
+          .update({'is_learned': true})
+          .match({
+        'user_id': userId,
+        'vocabulary_id': vocabId,
+      });
+    }
+  }
+
 
   Future<void> fetchVocabulary() async {
     final response = await Supabase.instance.client
@@ -43,15 +80,7 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
     });
   }
 
-  void checkAnswer() {
-    setState(() {
-      _submitted = true;
-      _isCorrect = _answerController.text.trim().toLowerCase() ==
-          vocabList[currentQuestionIndex].vietnameseWord.toLowerCase();
-    });
-  }
-
-  void nextQuestion() {
+  Future<void> nextQuestion() async {
     if (currentQuestionIndex < vocabList.length - 1) {
       setState(() {
         currentQuestionIndex++;
@@ -60,24 +89,56 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
         _answerController.clear();
       });
     } else {
-      showDialog(
+      if (incorrectVocabIds.isNotEmpty) {
+        // làm lại chỉ các từ sai
+        vocabList = vocabList
+            .where((v) => incorrectVocabIds.contains(v.id))
+            .toList()
+          ..shuffle();
+        setState(() {
+          currentQuestionIndex = 0;
+          _submitted = false;
+          _isCorrect = false;
+          _answerController.clear();
+        });
+      } else {
+        // ✅ kết thúc thật sự
+        await showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: Text("Quiz Finished"),
-          content: Text("You've reached the end of the quiz."),
+          title: Text("Hoàn thành!"),
+          content: Text("Bạn đã làm đúng tất cả các từ."),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
               child: Text("OK"),
-            )
+            ),
           ],
         ),
-      );
+        );
+        Navigator.pop(context);
+      }
     }
   }
+  @override
+  void dispose() {
+    _answerController.dispose();
+    _markIncorrectAsUnlearned();
+    super.dispose();
+  }
+
+  Future<void> _markIncorrectAsUnlearned() async {
+    for (final vocabId in incorrectVocabIds) {
+      await Supabase.instance.client
+          .from('user_vocabulary_progress')
+          .update({'is_learned': false})
+          .match({
+        'user_id': userId,
+        'vocabulary_id': vocabId,
+      });
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +174,8 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
                   IconButton(
                     icon: const Icon(Icons.arrow_back, size: 28),
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pop(context); // dialog
+                      Navigator.pop(context, true); // pop về main
                     },
                   ),
                   const SizedBox(width: 8),
@@ -162,34 +224,15 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
                                       context: context,
                                       builder: (_) => AlertDialog(
                                         title: const Text("Hint"),
-                                        content: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              currentVocab.example ??
-                                                  "Không có ví dụ",
-                                              style:
-                                                  const TextStyle(fontSize: 16),
-                                            ),
-                                            const SizedBox(height: 10),
-                                            if (currentVocab.imageUrl != null &&
-                                                currentVocab
-                                                    .imageUrl!.isNotEmpty)
-                                              Image.network(
-                                                currentVocab.imageUrl!,
-                                                height: 150,
-                                                fit: BoxFit.contain,
-                                                errorBuilder: (context, error,
-                                                        stackTrace) =>
-                                                    const Text(
-                                                        "Không thể tải ảnh",
-                                                        style: TextStyle(
-                                                            color: Colors.red)),
-                                              )
-                                            else
-                                              const Text("Không có hình ảnh"),
-                                          ],
-                                        ),
+                                        content: currentVocab.imageUrl != null && currentVocab.imageUrl!.isNotEmpty
+                                            ? Image.network(
+                                          currentVocab.imageUrl!,
+                                          height: 180,
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (context, error, stackTrace) =>
+                                              Text("Không thể tải ảnh"),
+                                        )
+                                            : Text("Không có hình ảnh"),
                                         actions: [
                                           TextButton(
                                             onPressed: () =>
@@ -217,7 +260,7 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
                                 style: TextStyle(fontSize: 16)),
                             const SizedBox(height: 10),
                             Text(
-                              currentVocab.englishWord,
+                              currentVocab.meaning,
                               style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
@@ -254,7 +297,7 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
                                         child: Text(
                                           _isCorrect
                                               ? "Correct!"
-                                              : "Wrong! Correct answer: ${currentVocab.vietnameseWord}",
+                                              : "Wrong! Correct answer: ${currentVocab.englishWord}",
                                           style: TextStyle(
                                             color: _isCorrect
                                                 ? Colors.green

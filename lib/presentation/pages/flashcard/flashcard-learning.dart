@@ -1,132 +1,66 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../components/BottomNavBar.dart';
-import '../../components/CustomAppBar.dart';
-import '../../model/Flashcards.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../model/Vocabulary.dart';
+import '../../components/CustomAppBar.dart';
+import '../../components/BottomNavBar.dart';
 
 class FlashcardLearning extends StatefulWidget {
   final String flashcardId;
-
   const FlashcardLearning({Key? key, required this.flashcardId}) : super(key: key);
 
   @override
-  State<FlashcardLearning> createState() => _FlashcardDetailScreenState();
+  State<FlashcardLearning> createState() => _FlashcardLearningState();
 }
 
-class _FlashcardDetailScreenState extends State<FlashcardLearning>
-    with SingleTickerProviderStateMixin {
+class _FlashcardLearningState extends State<FlashcardLearning> with SingleTickerProviderStateMixin {
+  List<Vocabulary> vocabList = [];
+  int currentIndex = 0;
   bool isFlipped = false;
   late AnimationController _controller;
   late Animation<double> _animation;
-  int currentWordIndex = 0;
-  late Flashcard _flashcard;
-  List<Vocabulary> words = [];
-  int userProgress = 0;
-  FlutterTts flutterTts = FlutterTts();
+  final FlutterTts flutterTts = FlutterTts();
+  String userId = '';
 
   @override
   void initState() {
     super.initState();
-
     _controller = AnimationController(
-      duration: Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
     _animation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
-
-    _loadFlashcardData(widget.flashcardId);
-
-    // Add keyboard listener for desktop shortcuts
-    RawKeyboard.instance.addListener(_handleKeyEvent);
+    _loadUserIdAndData();
   }
 
-  void _handleKeyEvent(RawKeyEvent event) {
-    if (event is RawKeyDownEvent) {
-      if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-        _handleBack();
-      } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-        _handleNext();
-      } else if (event.logicalKey == LogicalKeyboardKey.space) {
-        _flipCard();
-      } else if (event.logicalKey == LogicalKeyboardKey.keyP) {
-        _handlePronunciation();
-      }
-    }
-  }
+  Future<void> _loadUserIdAndData() async {
+    final prefs = await SharedPreferences.getInstance();
+    userId = prefs.getString('user_id') ?? '';
+    final response = await Supabase.instance.client
+        .from('flashcard_words')
+        .select()
+        .eq('flashcard_id', widget.flashcardId);
 
-  Future<void> _handlePronunciation() async {
-    if (words.isEmpty) return;
+    final List<Vocabulary> list = (response as List).map((e) => Vocabulary.fromMap(e)).toList();
 
-    final word = words[currentWordIndex].englishWord;
-    await flutterTts.setLanguage("en-US");
-    await flutterTts.setSpeechRate(0.5);
-    await flutterTts.setPitch(1.0);
-    await flutterTts.speak(word);
-  }
-
-  Future<void> _loadFlashcardData(String flashcardId) async {
-    try {
-      final response = await Supabase.instance.client
-          .from('flashcards')
+    // Load trạng thái học của người dùng
+    for (var word in list) {
+      final progress = await Supabase.instance.client
+          .from('user_vocabulary_progress')
           .select()
-          .eq('id', flashcardId)
-          .single();
+          .match({'user_id': userId, 'vocabulary_id': word.id});
 
-      if (response != null) {
-        final flashcard = response;
-
-        setState(() {
-          _flashcard = Flashcard(
-            id: flashcard['id'],
-            topic: flashcard['topic'],
-            totalWords: flashcard['total_words'],
-            createdAt: DateTime.parse(flashcard['created_at']),
-          );
-        });
-
-        await _loadVocabulary();
-      } else {
-        print('No flashcard found with the given ID.');
+      if (progress.isNotEmpty) {
+        word.isFavorite = progress[0]['is_favorite'] ?? false;
+        word.isLearned = progress[0]['is_learned'] ?? false;
       }
-    } catch (e) {
-      print('Error loading flashcard data: $e');
     }
-  }
 
-  Future<void> _loadVocabulary() async {
-    try {
-      final response = await Supabase.instance.client
-          .from('flashcard_words')
-          .select()
-          .eq('flashcard_id', _flashcard.id);
-
-      if (response != null && response is List) {
-        final List<Vocabulary> loadedWords = response
-            .map((item) => Vocabulary.fromMap(item))
-            .toList();
-
-        setState(() {
-          words = loadedWords;
-        });
-      } else {
-        print('No vocabulary found for this flashcard.');
-      }
-    } catch (e) {
-      print('Error fetching vocabulary: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    RawKeyboard.instance.removeListener(_handleKeyEvent);
-    _controller.dispose();
-    flutterTts.stop();
-    super.dispose();
+    setState(() => vocabList = list);
   }
 
   void _flipCard() {
@@ -141,791 +75,145 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
   }
 
   void _handleNext() {
-    if (currentWordIndex < words.length - 1) {
+    if (currentIndex < vocabList.length - 1) {
       setState(() {
-        currentWordIndex++;
+        currentIndex++;
         isFlipped = false;
         _controller.reset();
       });
     }
   }
 
-  void _handleBack() {
-    if (currentWordIndex > 0) {
+  void _handlePrev() {
+    if (currentIndex > 0) {
       setState(() {
-        currentWordIndex--;
+        currentIndex--;
         isFlipped = false;
         _controller.reset();
       });
     }
   }
 
-  Widget _buildProgressSection() {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 16),
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Progress',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                '$userProgress/${_flashcard.totalWords}',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0067AC),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: userProgress / _flashcard.totalWords,
-              backgroundColor: Colors.grey[200],
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0067AC)),
-              minHeight: 8,
-            ),
-          ),
-        ],
-      ),
-    );
+  Future<void> _handlePronounce() async {
+    final word = vocabList[currentIndex].englishWord;
+    await flutterTts.setLanguage('en-US');
+    await flutterTts.setPitch(1);
+    await flutterTts.setSpeechRate(0.5);
+    await flutterTts.speak(word);
+  }
+
+  Future<void> _toggleFavorite() async {
+    final word = vocabList[currentIndex];
+    setState(() => word.isFavorite = !word.isFavorite);
+
+    await Supabase.instance.client
+        .from('user_vocabulary_progress')
+        .upsert({
+      'user_id': userId,
+      'vocabulary_id': word.id,
+      'is_favorite': word.isFavorite,
+    }, onConflict: 'user_id, vocabulary_id');
+
+  }
+
+  Future<void> _toggleLearned() async {
+    final word = vocabList[currentIndex];
+    setState(() => word.isLearned = !word.isLearned);
+
+    await Supabase.instance.client
+        .from('user_vocabulary_progress')
+        .upsert({
+      'user_id': userId,
+      'vocabulary_id': word.id,
+      'is_learned': word.isLearned,
+    },  onConflict: 'user_id, vocabulary_id');
   }
 
   Widget _buildFlashcard(Vocabulary word) {
-
     return GestureDetector(
-      onTap: _flipCard,
-      child: AnimatedBuilder(
-        animation: _animation,
-        builder: (context, child) {
-          final isDesktop = MediaQuery.of(context).size.width > 900;
-          return Transform(
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.001)
-              ..rotateY(3.14159 * _animation.value),
-            alignment: Alignment.center,
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Colors.white, Color(0xFFF5FBFF)],
-                ),
-                borderRadius: BorderRadius.circular(isDesktop ? 32 : 20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0xFF0067AC).withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: Offset(0, 10),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 5,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-                border: Border.all(
-                  color: Color(0xFF0067AC).withOpacity(0.1),
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: Padding(
-                  padding: EdgeInsets.all(isDesktop ? 40 : 20),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        isDesktop ? 'FLASHCARD' : 'CARD',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 2,
-                          color: Color(0xFF0067AC).withOpacity(0.5),
-                        ),
-                      ),
-                      SizedBox(height: isDesktop ? 30 : 20),
-                      _animation.value < 0.5
-                          ? Text(
-                        word.englishWord,
-                        style: TextStyle(
-                          fontSize: isDesktop ? 60 : 48,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0067AC),
-                        ),
-                        textAlign: TextAlign.center,
-                      )
-                          : Transform(
-                        alignment: Alignment.center,
-                        transform: Matrix4.identity()..rotateY(3.14159),
-                        child: Text(
-                          word.vietnameseWord,
-                          style: TextStyle(
-                            fontSize: isDesktop ? 60 : 48,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0067AC),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      SizedBox(height: isDesktop ? 40 : 20),
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Color(0xFF0067AC).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.volume_up,
-                            color: Color(0xFF0067AC),
-                            size: 30,
-                          ),
-                          onPressed: _handlePronunciation,
-                        ),
-                      ),
-                      SizedBox(height: isDesktop ? 30 : 10),
-                      if (isDesktop)
-                        Text(
-                          'Click to flip',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildWordDetailsCard(Vocabulary word) {
-    final isDesktop = MediaQuery.of(context).size.width > 900;
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      padding: EdgeInsets.all(isDesktop ? 24 : 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (isDesktop)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Phần hình ảnh vuông - desktop
-                Container(
-                  width: 250,
-                  height: 250,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Color(0xFFEEEEEE)),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(9),
-                    child: Image.network(
-                      word.imageUrl ?? '',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(
-                          child: Icon(Icons.image_not_supported, color: Colors.grey, size: 50),
-                        );
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0067AC)),
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                : null,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(width: 24),
-
-                // Pronunciation và thông tin chi tiết - desktop
-                Expanded(
-                  child: Container(
-                    height: 250,
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFF5FBFF),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Color(0xFFDDEEFA)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: Color(0xFF0067AC).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.volume_up,
-                                  color: Color(0xFF0067AC),
-                                  size: 24,
-                                ),
-                                padding: EdgeInsets.zero,
-                                onPressed: _handlePronunciation,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        SizedBox(height: 8),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Color(0xFFE5E5E5)),
-                          ),
-                          child: Text(
-                            word.pronunciation ?? 'N/A',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w500,
-                              fontFamily: 'serif',
-                            ),
-                          ),
-                        ),
-                        Spacer(),
-
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            )
-          else
-          // Mobile layout
-            Column(
-              children: [
-                AspectRatio(
-                  aspectRatio: 1,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Color(0xFFEEEEEE)),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(9),
-                      child: Image.network(
-                        word.imageUrl ?? '',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Center(
-                            child: Icon(Icons.image_not_supported, color: Colors.grey, size: 40),
-                          );
-                        },
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0067AC)),
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 16),
-
-                // Phần pronunciation cho mobile
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFF5FBFF),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Color(0xFFDDEEFA)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Pronunciation',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF0067AC),
-                            ),
-                          ),
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: Color(0xFF0067AC).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: IconButton(
-                              icon: Icon(
-                                Icons.volume_up,
-                                color: Color(0xFF0067AC),
-                                size: 20,
-                              ),
-                              padding: EdgeInsets.zero,
-                              onPressed: _handlePronunciation,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      SizedBox(height: 6),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Color(0xFFE5E5E5)),
-                        ),
-                        child: Text(
-                          word.pronunciation ?? 'N/A',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            fontFamily: 'serif',
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-
-
-                    ],
-                  ),
-                ),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-
-// Widget hiển thị pill thông tin thay vì _buildWordInfoChip
-  Widget _buildInfoPill(String text) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Color(0xFFE1F0FF),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: Color(0xFF0067AC),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDescriptionCard(Vocabulary word) {
-    final isDesktop = MediaQuery.of(context).size.width > 900;
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      padding: EdgeInsets.all(isDesktop ? 24 : 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Description',
-            style: TextStyle(
-              fontSize: isDesktop ? 18 : 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            word.meaning ?? 'N/A',
-            style: TextStyle(
-              fontSize: isDesktop ? 18 : 16,
-              color: Colors.grey[600],
-              height: 1.7,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildKeyboardShortcutInfo(String key, String action) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Color(0xFFEEF7FF),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Color(0xFFCCE4F7)),
-            ),
-            child: Text(
-              key,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF0067AC),
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-          Text(
-            action,
-            style: TextStyle(
-              color: Color(0xFF5A5A5A),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDesktopNavigationControls() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        ElevatedButton.icon(
-          onPressed: _handleBack,
-          icon: Icon(Icons.arrow_back_rounded),
-          label: Text(''),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Color(0xFF0067AC),
-            elevation: 0,
-            side: BorderSide(color: Color(0xFF0067AC)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-        ),
-        ElevatedButton.icon(
-          onPressed: _handleNext,
-          icon: Icon(Icons.arrow_forward_rounded),
-          label: Text(''),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Color(0xFF0067AC),
-            elevation: 0,
-            side: BorderSide(color: Color(0xFF0067AC)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDesktopLayout(Vocabulary currentWord) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Left sidebar for desktop with progress and navigation controls
-        Container(
-          width: 280,
-          padding: EdgeInsets.all(20),
+      onTap: () => setState(() => isFlipped = !isFlipped),
+      child: Center(
+        child: Container(
+          constraints: BoxConstraints(maxWidth: 320, maxHeight: 320), // 🔷 nhỏ gọn, hình vuông
+          padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: Offset(1, 0),
-              ),
+              BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 6)),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildProgressSection(),
-              SizedBox(height: 24),
-              Text(
-                'Thanh điều hướng',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF202244),
-                ),
-              ),
-              SizedBox(height: 16),
-              _buildDesktopNavigationControls(),
-              SizedBox(height: 24),
-              SizedBox(height: 16),
-              _buildKeyboardShortcutInfo('← / →', 'Previous / Next'),
-              _buildKeyboardShortcutInfo('Space', 'Flip Card'),
-              _buildKeyboardShortcutInfo('P', 'Pronounce'),
-              Spacer(),
-              Text(
-                'Word ${currentWordIndex + 1} of ${words.length}',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF0067AC),
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Main content area
-        Expanded(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(24),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: 1000),
-                child: Column(
-                  children: [
-                    // On desktop, put flashcard first with larger size
-                    Container(
-                      height: 400, // Larger flashcard for desktop
-                      margin: EdgeInsets.only(bottom: 32),
-                      child: _buildFlashcard(currentWord),
+          child: isFlipped
+              ? Center(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    word.englishWord,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0067AC),
                     ),
-
-                    // Two-column layout for the details on desktop
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _buildWordDetailsCard(currentWord),
-                        ),
-                        SizedBox(width: 24),
-                        Expanded(
-                          child: _buildDescriptionCard(currentWord),
-                        ),
-                      ],
+                    textAlign: TextAlign.center,
+                  ),
+                  if (word.pronunciation != null) ...[
+                    SizedBox(height: 6),
+                    Text(
+                      "/${word.pronunciation}/",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 50),
                   ],
-                ),
+                  SizedBox(height: 10),
+                  Text(
+                    word.meaning,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black87,
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (word.example != null && word.example!.trim().isNotEmpty) ...[
+                    SizedBox(height: 10),
+                    Text(
+                      '"${word.example}"',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey[700],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  SizedBox(height: 14),
+                  IconButton(
+                    icon: Icon(Icons.volume_up_rounded, size: 24, color: Color(0xFF0067AC)),
+                    onPressed: _handlePronounce,
+                  ),
+                ],
               ),
             ),
+          )
+              : ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: word.imageUrl != null && word.imageUrl!.isNotEmpty
+                ? Image.network(
+              word.imageUrl!,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stack) =>
+                  Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+            )
+                : Center(child: Icon(Icons.image, size: 48, color: Colors.grey)),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMobileLayout(Vocabulary currentWord) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProgressSection(),
-            _buildWordDetailsCard(currentWord),
-            _buildDescriptionCard(currentWord),
-            _buildFlashcard(currentWord),
-            SizedBox(height: 100),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomSection(bool isDesktop) {
-    if (isDesktop) {
-      // Desktop doesn't need the bottom navigation controls
-      return SizedBox();
-    }
-
-    // Return the existing mobile bottom navigation
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            offset: Offset(0, -4),
-            blurRadius: 15,
-          ),
-        ],
-      ),
-      padding: EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 8),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Nút Back
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF0067AC), Color(0xFF0088DC)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(21),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xFF0067AC).withOpacity(0.3),
-                        offset: Offset(0, 3),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _handleBack,
-                      borderRadius: BorderRadius.circular(21),
-                      child: Icon(
-                        Icons.arrow_back_ios_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Tap to flip indicator
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF0067AC).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Color(0xFF0067AC).withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.touch_app_rounded,
-                        color: Color(0xFF0067AC),
-                        size: 18,
-                      ),
-                      SizedBox(width: 6),
-                      Text(
-                        'Tap to flip',
-                        style: TextStyle(
-                          color: Color(0xFF0067AC),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Nút Next
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF0067AC), Color(0xFF0088DC)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(21),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xFF0067AC).withOpacity(0.3),
-                        offset: Offset(0, 3),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _handleNext,
-                      borderRadius: BorderRadius.circular(21),
-                      child: Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 2),
-            BottomNavBar(currentIndex: 1, onTap: (int) {}),
-          ],
         ),
       ),
     );
@@ -933,97 +221,71 @@ class _FlashcardDetailScreenState extends State<FlashcardLearning>
 
   @override
   Widget build(BuildContext context) {
-    if (words.isEmpty) {
+    final isDesktop = MediaQuery.of(context).size.width > 900;
+    if (vocabList.isEmpty) {
       return Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0067AC)),
-          ),
-        ),
+        appBar: AppBar(title: Text("Flashcard")),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    final currentWord = words[currentWordIndex];
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isDesktop = screenWidth > 900;
-
+    final word = vocabList[currentIndex];
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment(0.00, -1.00),
-            end: Alignment(0, 1),
-            colors: [Colors.white, Color(0xFFC5E8FF)],
+      appBar: AppBar(title: Text("Flashcard")),
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: LinearProgressIndicator(
+              value: (currentIndex + 1) / vocabList.length,
+              backgroundColor: Colors.grey[300],
+              color: Color(0xFF0067AC),
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            Container(
-              color: Colors.white,
-              child: Column(
-                children: [
-                  CustomAppBar(),
-                  Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _flashcard.topic,
-                                style: TextStyle(
-                                  color: Color(0xFF202244),
-                                  fontSize: isDesktop ? 28 : 24,
-                                  fontFamily: 'Jost',
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (isDesktop)
-                                Text(
-                                  '${words.length} words • Created on ${_flashcard.createdAt.day}/${_flashcard.createdAt.month}/${_flashcard.createdAt.year}',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 14,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.favorite_border),
-                              color: Color(0xFF0067AC),
-                              onPressed: () {},
-                              tooltip: 'Add to favorites',
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.share),
-                              color: Color(0xFF0067AC),
-                              onPressed: () {},
-                              tooltip: 'Share flashcard',
-                            ),
-                          ],
-                        ),
-                      ],
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildFlashcard(word),
+                SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: Icon(word.isFavorite ? Icons.favorite : Icons.favorite_border, color: Colors.red),
+                      onPressed: _toggleFavorite,
                     ),
-                  ),
-                ],
-              ),
+                    IconButton(
+                      icon: Icon(word.isLearned ? Icons.check_circle : Icons.check_circle_outline,
+                          color: Color(0xFF0067AC)),
+                      onPressed: _toggleLearned,
+                    ),
+                  ],
+                ),
+              ],
             ),
-            Expanded(
-              child: isDesktop
-                  ? _buildDesktopLayout(currentWord)
-                  : _buildMobileLayout(currentWord),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(icon: Icon(Icons.arrow_back_ios), onPressed: _handlePrev),
+                Text("${currentIndex + 1}/${vocabList.length}"),
+                IconButton(icon: Icon(Icons.arrow_forward_ios), onPressed: _handleNext),
+              ],
             ),
-            _buildBottomSection(isDesktop),
-          ],
-        ),
+          ),
+        ],
       ),
+      bottomNavigationBar: BottomNavBar(currentIndex: 1, onTap: (_) {}),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    flutterTts.stop();
+    super.dispose();
   }
 }

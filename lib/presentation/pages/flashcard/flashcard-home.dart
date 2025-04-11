@@ -6,7 +6,7 @@ import '../../components/CustomAppBar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:auth/presentation/pages/flashcard/vocabulary-main.dart';
 import '../../model/FlashCards.dart';
-
+import '../../model/FlashcardProgress.dart';
 
 class FlashcardHome extends StatefulWidget {
   const FlashcardHome({super.key});
@@ -25,9 +25,9 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
   late Animation<double> _animation;
   
   // Mock data for statistics
-  final int _totalWords = 0; 
-  final int _learnedWords = 0;
-  final int _streak = 0;
+  late int _totalWords = 0;
+  late int _learnedWords = 0;
+
 
   @override
   void initState() {
@@ -54,7 +54,11 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
     SharedPreferences prefs = await SharedPreferences.getInstance();
     userId = prefs.getString('user_id') ?? '';
     await _loadFlashcards();
-    await _loadFlashcardsProgress();
+
+    if (_flashcards.isNotEmpty) {
+      await _loadFlashcardsProgress();
+    }
+    _loadOverallStatistics();
   }
 
   Future<void> _loadFlashcards() async {
@@ -81,13 +85,14 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
           _progressList = progressResponse.map((e) => FlashcardProgress.fromMap(e)).toList();
         });
       } else {
-        // Create new progress records for each flashcard if none exist
+        // Nếu chưa có thì tạo mới với progress = 0
         for (var flashcard in _flashcards) {
           await _createProgressForFlashcard(flashcard.id);
         }
       }
     }
   }
+
 
   Future<void> _createProgressForFlashcard(String flashcardId) async {
     final response = await _supabase.from('flashcards_progress').insert({
@@ -201,6 +206,26 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
       ],
     );
   }
+  Future<void> _loadOverallStatistics() async {
+    final userId = this.userId;
+
+    // Lấy tất cả từ user đã học
+    final learnedWordsRes = await Supabase.instance.client
+        .from('user_vocabulary_progress')
+        .select('vocabulary_id')
+        .eq('user_id', userId)
+        .eq('is_learned', true);
+
+    final totalWordsRes = await Supabase.instance.client
+        .from('user_vocabulary_progress')
+        .select('vocabulary_id')
+        .eq('user_id', userId);
+
+    setState(() {
+      _learnedWords = (learnedWordsRes as List).length;
+      _totalWords = (totalWordsRes as List).length;
+    });
+  }
 
   Widget _buildStatisticsCards() {
     return Container(
@@ -238,7 +263,6 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
             children: [
               _buildStatCard('Words', '$_totalWords', Icons.book_outlined),
               _buildStatCard('Learned', '$_learnedWords', Icons.check_circle_outline),
-              _buildStatCard('Streak', '$_streak days', Icons.local_fire_department_outlined),
             ],
           ),
           const SizedBox(height: 20),
@@ -416,13 +440,13 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
 
   Widget _buildTopicCard(
       String title, String totalWords, int currentProgress, String topicId, Color accentColor) {
-    double progressPercent = int.parse(totalWords) > 0 
-        ? currentProgress / int.parse(totalWords) 
+    double progressPercent = int.parse(totalWords) > 0
+        ? currentProgress / int.parse(totalWords)
         : 0.0;
-    
+
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        final result = await Navigator.push(
           context,
           PageRouteBuilder(
             pageBuilder: (_, animation, __) => VocabularyMain(topicId: topicId),
@@ -432,7 +456,13 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
             transitionDuration: const Duration(milliseconds: 300),
           ),
         );
+
+        // Nếu result là true thì reload progress
+        if (result == true) {
+          await _loadFlashcardsProgress();
+        }
       },
+
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(

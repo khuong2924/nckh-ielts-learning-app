@@ -5,8 +5,8 @@ import '../../model/Vocabulary.dart';
 
 class VocabularyItem extends StatelessWidget {
   final Vocabulary vocabulary;
-  final ValueChanged<bool>? onLearningStatusChanged;
-  final ValueChanged<bool>? onFavoriteChanged;
+  final Future<void> Function(bool)? onLearningStatusChanged;
+  final Future<void> Function(bool)? onFavoriteChanged;
 
   const VocabularyItem({
     Key? key,
@@ -14,6 +14,76 @@ class VocabularyItem extends StatelessWidget {
     this.onLearningStatusChanged,
     this.onFavoriteChanged,
   }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      height: 65,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: EdgeInsets.only(left: 15),
+              child: Text(vocabulary.englishWord,
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+          Container(width: 1, height: double.infinity, color: Color(0xFF0067AC)),
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 10),
+              child: ElevatedButton(
+                onPressed: () => _showVocabularyDetails(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF0067AC),      // Màu nền
+                  foregroundColor: Colors.white,          // Màu chữ
+                ),
+                child: Text(
+                  "View",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+
+          ),
+          IconButton(
+            icon: Icon(
+              vocabulary.isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: Color(0xFF0067AC),
+            ),
+            onPressed: () async {
+              if (onFavoriteChanged != null) {
+                await onFavoriteChanged!(!vocabulary.isFavorite);
+              }
+            },
+          ),
+          IconButton(
+            icon: Icon(
+              vocabulary.isLearned ? Icons.check_circle : Icons.check_circle_outline,
+              color: Color(0xFF0067AC),
+            ),
+            onPressed: () async {
+              if (onLearningStatusChanged != null) {
+                await onLearningStatusChanged!(!vocabulary.isLearned);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showVocabularyDetails(BuildContext context) {
     showDialog(
@@ -101,7 +171,7 @@ class VocabularyItem extends StatelessWidget {
                         ),
                         SizedBox(height: 5),
                         Text(
-                          vocabulary.vietnameseWord,
+                          vocabulary.meaning,
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -135,92 +205,6 @@ class VocabularyItem extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      height: 65,
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        shadows: [
-          BoxShadow(
-            color: Color(0x3F000000),
-            blurRadius: 4,
-            offset: Offset(0, 4),
-          )
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: EdgeInsets.only(left: 15),
-              child: Text(
-                vocabulary.englishWord,
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 14,
-                  fontFamily: 'Roboto',
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-          Container(
-            width: 1,
-            height: double.infinity,
-            color: Color(0xFF0067AC),
-          ),
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10),
-              child: ElevatedButton(
-                onPressed: () => _showVocabularyDetails(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF0067AC),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  'View',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            icon: Icon(
-              vocabulary.isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: Color(0xFF0067AC),
-            ),
-            onPressed: () {
-              onFavoriteChanged?.call(!vocabulary.isFavorite);
-            },
-          ),
-          IconButton(
-            icon: Icon(
-              vocabulary.isLearned ? Icons.check_circle : Icons.check_circle_outline,
-              color: Color(0xFF0067AC),
-            ),
-            onPressed: () {
-              onLearningStatusChanged?.call(!vocabulary.isLearned);
-            },
-          ),
-        ],
-      ),
     );
   }
 }
