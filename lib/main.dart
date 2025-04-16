@@ -1,4 +1,4 @@
-import 'package:auth/presentation/pages/flashcard/flashcard-home.dart';
+ import 'package:auth/presentation/pages/flashcard/flashcard-home.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // File được tạo bởi Firebase CLI
@@ -15,7 +15,11 @@ import 'package:auth/presentation/pages/friends-page/chat.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    print("Lỗi khi load .env: $e");
+  }
   // Khởi tạo Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,

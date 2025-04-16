@@ -83,3 +83,4 @@ flutter:
     - lib/icons/ic-homecard.png
     - lib/icons/ic-close.svg
     - lib/icons/ic-search.svg
+    - .env
