@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../../components/BottomNavBar.dart';
-import '../../components/ChatSupport.dart';
 import '../../components/CustomAppBar.dart';
 import '../account-management/signin.dart';
 
@@ -104,14 +103,7 @@ class _HomeLoadState extends State<HomeLoad> with SingleTickerProviderStateMixin
               backgroundColor: const Color(0xff2A4ECA),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                  ),
-                  builder: (_) => const ChatSupportSheet(),
-                );
+
               },
               child: const Icon(Icons.chat_bubble_outline),
             ),

@@ -12,10 +12,10 @@ import 'package:auth/presentation/pages/account-management/signup.dart';
 import 'package:auth/presentation/pages/account-management/splash_screen.dart';
 import 'package:auth/presentation/pages/statistical/statistical.dart';
 import 'package:auth/presentation/pages/friends-page/chat.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await dotenv.load(fileName: ".env");
   // Khởi tạo Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
