@@ -244,15 +244,32 @@ $content2
           ? const Center(child: CircularProgressIndicator())
           : errorMessage.isNotEmpty
           ? Center(child: Text(errorMessage, style: const TextStyle(color: Colors.red, fontSize: 16)))
-          : ListView.separated(
+          : ListView(
         padding: const EdgeInsets.all(16),
-        itemCount: sections.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 16),
-        itemBuilder: (context, index) {
-          final title = sections.keys.elementAt(index);
-          final content = sections[title] ?? '';
-          return _FeedbackCard(title: title, content: content, index: index + 1);
-        },
+        children: [
+          // Hiển thị lại 2 bài viết của user
+          _EssayReviewSection(
+            submissions: widget.submissions,
+            elapsedTime: widget.elapsedTime,
+          ),
+          const SizedBox(height: 24),
+          // Feedback AI, chia section như cũ
+          ...List.generate(
+            sections.length,
+                (index) {
+              final title = sections.keys.elementAt(index);
+              final content = sections[title] ?? '';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: _FeedbackCard(
+                  title: title,
+                  content: content,
+                  index: index + 1,
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -323,4 +340,72 @@ String _stripHeader(String markdown) {
     return lines.sublist(1).join('\n').trim();
   }
   return markdown;
+}
+class _EssayReviewSection extends StatelessWidget {
+  final List<Map<String, String>> submissions;
+  final int elapsedTime;
+
+  const _EssayReviewSection({required this.submissions, required this.elapsedTime});
+
+  String _formatTime(int seconds) {
+    final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$secs';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "📝 Your Submitted Essays",
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: const Color(0xff2A4ECA),
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          "⏰ Time spent: ${_formatTime(elapsedTime)}",
+          style: const TextStyle(fontSize: 16, color: Colors.black54),
+        ),
+        const SizedBox(height: 10),
+        for (int i = 0; i < submissions.length; i++) ...[
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            color: Colors.grey[50],
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(14.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Task ${i + 1}:",
+                    style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xff2A4ECA)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    submissions[i]['task_description'] ?? '',
+                    style: const TextStyle(fontSize: 15, fontStyle: FontStyle.italic, color: Colors.black87),
+                  ),
+                  const Divider(height: 20, thickness: 1.2),
+                  Text(
+                    submissions[i]['user_answer'] ?? '',
+                    style: const TextStyle(fontSize: 15, color: Colors.black),
+                  ),
+                ],
+              ),
+            ),
+          )
+        ]
+      ],
+    );
+  }
 }

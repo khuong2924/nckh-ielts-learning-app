@@ -202,20 +202,32 @@ class PartWidget extends StatefulWidget {
   @override
   _PartWidgetState createState() => _PartWidgetState();
 }
-
 class _PartWidgetState extends State<PartWidget> {
   late TextEditingController _controller;
+  int _wordCount = 0;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.userAnswer);
+    _wordCount = _countWords(_controller.text);
+    _controller.addListener(() {
+      setState(() {
+        _wordCount = _countWords(_controller.text);
+      });
+      widget.onAnswerChanged(_controller.text);
+    });
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  int _countWords(String text) {
+    if (text.trim().isEmpty) return 0;
+    return text.trim().split(RegExp(r'\s+')).length;
   }
 
   @override
@@ -239,9 +251,13 @@ class _PartWidgetState extends State<PartWidget> {
             const SizedBox(height: 10),
             TextField(
               controller: _controller,
-              onChanged: widget.onAnswerChanged,
               decoration: const InputDecoration(border: OutlineInputBorder()),
               maxLines: 8,
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text('Word count: $_wordCount', style: const TextStyle(color: Colors.grey)),
             ),
           ],
         ),
