@@ -6,6 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:auth/presentation/pages/friends-page/Chat.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../route_persistence.dart';
+
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
 
@@ -21,8 +23,10 @@ class _FriendsPageState extends State<FriendsPage> {
   @override
   void initState() {
     super.initState();
+    saveLastRoute('friends'); // <--- Dòng này để lưu lại route khi user ở trang Friends
     _loadFriends();
   }
+
 
   String getCurrentUserId() {
     return FirebaseAuth.instance.currentUser?.uid ?? "";

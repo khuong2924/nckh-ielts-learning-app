@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 import '../../components/SettingCardSection.dart';
+import '../../route_persistence.dart';
 
 
 class SettingPage extends StatefulWidget {
@@ -16,8 +12,15 @@ class SettingPage extends StatefulWidget {
   State<StatefulWidget> createState() => _SettingPage();
 }
 
+
 class _SettingPage extends State<SettingPage> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    saveLastRoute('setting'); // <-- Thêm dòng này!
+  }
 
   @override
   Widget build(BuildContext context) {

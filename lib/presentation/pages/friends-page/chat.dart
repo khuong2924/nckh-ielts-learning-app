@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
-
 import '../../components/CustomAppBar.dart';
+import '../../route_persistence.dart';
 
 class Chat extends StatefulWidget {
   final String friendId;
@@ -25,6 +25,11 @@ class _ChatState extends State<Chat> {
   @override
   void initState() {
     super.initState();
+    // Lưu trạng thái route mỗi lần mở màn chat (đảm bảo khi F5 sẽ vào đúng chat này)
+    saveLastRoute(
+        'chat',
+        {'friendId': widget.friendId, 'friendName': widget.friendName}
+    );
   }
 
   String _getChatRoomId(String userId1, String userId2) {
@@ -102,6 +107,12 @@ class _ChatState extends State<Chat> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'writing-submission.dart'; // <-- Đừng quên đổi tên đúng nếu bạn lưu tên khác
 
 class WritingPage extends StatefulWidget {
@@ -33,8 +33,8 @@ class _WritingPageState extends State<WritingPage> {
   }
 
   Future<void> _loadUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    userId = prefs.getString('user_id') ?? '';
+    final box = await Hive.openBox('user_info');
+    userId = box.get('user_id', defaultValue: '');
   }
 
   Future<void> _fetchParts() async {
@@ -75,8 +75,8 @@ class _WritingPageState extends State<WritingPage> {
     }
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('user_id') ?? '';
+      final box = await Hive.openBox('user_info');
+      userId = box.get('user_id', defaultValue: '');
 
       for (var part in parts) {
         final partId = part['id'];

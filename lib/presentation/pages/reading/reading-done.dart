@@ -5,8 +5,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:auth/presentation/pages/test-page/viewanswer.dart';
 import 'dart:math' as math;
 import 'package:confetti/confetti.dart';
-import 'package:lottie/lottie.dart';
-
 import '../main-page/sample-test-home-page.dart';
 class ReadingDone extends StatefulWidget {
   final double score;

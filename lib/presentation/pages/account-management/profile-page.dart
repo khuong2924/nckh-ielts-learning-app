@@ -5,6 +5,8 @@ import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 
 import 'package:auth/presentation/pages/account-management/signin.dart';
+
+import '../../route_persistence.dart';
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -20,8 +22,10 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    _loadUserData(); // Load user data when the page initializes
+    saveLastRoute('profile');
+    _loadUserData();
   }
+
 
   Future<void> _loadUserData() async {
     User? user = _auth.currentUser; // Get the current user

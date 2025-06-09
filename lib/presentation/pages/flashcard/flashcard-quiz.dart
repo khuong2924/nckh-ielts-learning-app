@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 import '../../model/Vocabulary.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FlashCardQuiz extends StatefulWidget {
@@ -32,8 +32,8 @@ class _FlashCardQuizState extends State<FlashCardQuiz> {
   }
 
   Future<void> _loadUserIdAndFetch() async {
-    final prefs = await SharedPreferences.getInstance();
-    userId = prefs.getString('user_id') ?? '';
+    final box = await Hive.openBox('app_box');
+    userId = box.get('user_id', defaultValue: '') ?? '';
     await fetchVocabulary();
   }
 

@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:auth/presentation/model/TestCard.dart';
 import 'package:auth/presentation/service/SupabaseService.dart';
 
+import '../../route_persistence.dart';
+
 // Enhanced SearchResultHeader Widget
 class SearchResultHeader extends StatelessWidget {
   final String searchQuery;
@@ -74,7 +76,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool _isLoading = true;
   String? _errorMessage;
   final SupabaseService _supabaseService = SupabaseService();
-  
+
   // Animation controller for search bar
   late AnimationController _animationController;
   late Animation<double> _animation;
@@ -82,8 +84,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
+    saveLastRoute('homepage'); // <-- dòng này là quan trọng!
     _fetchTests();
-    
+
     // Setup animations
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -225,8 +228,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           child: Row(
             children: [
               const Icon(
-                Icons.book_outlined, 
-                color: Color.fromARGB(255, 55, 102, 182), 
+                Icons.book_outlined,
+                color: Color.fromARGB(255, 55, 102, 182),
                 size: 28,
               ),
               const SizedBox(width: 10),
@@ -427,7 +430,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         ),
       );
     }
-    
+
     if (_errorMessage != null) {
       return Center(
         child: Padding(
@@ -467,7 +470,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         ),
       );
     }
-    
+
     if (_filteredTests.isEmpty) {
       return Center(
         child: Padding(

@@ -1,12 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 import '../account-management/signin.dart';
-
+import 'package:auth/presentation/route_persistence.dart';
 class HomeLoad extends StatefulWidget {
   const HomeLoad({super.key});
 
@@ -22,6 +22,7 @@ class _HomeLoadState extends State<HomeLoad> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
+    saveLastRoute('home');
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
@@ -29,6 +30,7 @@ class _HomeLoadState extends State<HomeLoad> with SingleTickerProviderStateMixin
     _animation = CurvedAnimation(parent: _animationController, curve: Curves.easeInOut);
     _animationController.forward();
   }
+
 
   @override
   void dispose() {
@@ -38,9 +40,9 @@ class _HomeLoadState extends State<HomeLoad> with SingleTickerProviderStateMixin
 
   void _signOut() async {
     await FirebaseAuth.instance.signOut();
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('user_id');
-    await prefs.setBool('is_logged_in', false);
+    final box = await Hive.openBox('app_box');
+    await box.delete('user_id');
+    await box.put('is_logged_in', false);
 
     Navigator.pushReplacement(
       context,

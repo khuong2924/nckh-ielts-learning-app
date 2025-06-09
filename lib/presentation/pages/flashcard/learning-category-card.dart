@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:auth/presentation/pages/flashcard/flashcard-learning.dart'; // Import trang FlashCard
 
-import 'learning-category.dart';
+import '../../model/learning-category.dart';
 class LearningCategoryCard extends StatelessWidget {
   final LearningCategory category;
   final VoidCallback onTap; // Thêm tham số onTap

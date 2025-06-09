@@ -1,16 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:auth/common/bloc/button/button_state.dart';
-import 'package:auth/common/bloc/button/button_state_cubit.dart';
-import 'package:auth/common/widgets/button/basic_app_button.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:auth/presentation/pages/main-page/home-page.dart';
+import 'package:auth/presentation/pages/account-management/signup.dart';
+import 'package:hive/hive.dart';
 import '../../components/ForgetPass.dart';
 import '../../components/HeaderImage.dart';
 import '../../components/SocialLoginButtons.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:auth/presentation/pages/main-page/home-page.dart';
-import 'package:auth/presentation/pages/account-management/signup.dart';
+
 class SigninPage extends StatefulWidget {
   const SigninPage({super.key});
 
@@ -22,6 +19,7 @@ class _SigninPageState extends State<SigninPage> {
   final TextEditingController _emailCon = TextEditingController();
   final TextEditingController _passwordCon = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -33,44 +31,28 @@ class _SigninPageState extends State<SigninPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocProvider(
-        create: (context) => ButtonStateCubit(),
-        child: BlocListener<ButtonStateCubit, ButtonState>(
-          listener: (context, state) {
-            if (state is ButtonSuccessState) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeLoad()),
-              );
-            } else if (state is ButtonFailureState) {
-              var snackBar = SnackBar(content: Text(state.errorMessage));
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
-            }
-          },
-          child: SafeArea(
-            minimum: const EdgeInsets.only(top: 100, right: 16, left: 16),
-            child: SingleChildScrollView( // Thêm ScrollView để tránh overflow
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const HeaderImage(),
-                  _signin(),
-                  const SizedBox(height: 30),
-                  _emailField(),
-                  const SizedBox(height: 20),
-                  _password(),
-                  const SizedBox(height: 30),
-                  _createAccountButton(context),
-                  const SizedBox(height: 20),
-                  const ForgetPass(),
-                  const SizedBox(height: 20),
-                  SocialLoginButtons(),
-                  const SizedBox(height: 20),
-                  _signupText(context),
-                ],
-              ),
-            ),
+      body: SafeArea(
+        minimum: const EdgeInsets.only(top: 100, right: 16, left: 16),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const HeaderImage(),
+              _signin(),
+              const SizedBox(height: 30),
+              _emailField(),
+              const SizedBox(height: 20),
+              _password(),
+              const SizedBox(height: 30),
+              _loginButton(context),
+              const SizedBox(height: 20),
+              const ForgetPass(),
+              const SizedBox(height: 20),
+              SocialLoginButtons(),
+              const SizedBox(height: 20),
+              _signupText(context),
+            ],
           ),
         ),
       ),
@@ -102,16 +84,17 @@ class _SigninPageState extends State<SigninPage> {
   Widget _password() {
     return TextField(
       controller: _passwordCon,
-      obscureText: _obscurePassword, // Sử dụng biến để điều khiển hiển thị mật khẩu
+      obscureText: _obscurePassword,
       decoration: InputDecoration(
-        hintText: 'Password',
+        labelText: 'Password',
+        hintText: 'Enter your password',
         suffixIcon: IconButton(
           icon: Icon(
             _obscurePassword ? Icons.visibility : Icons.visibility_off,
           ),
           onPressed: () {
             setState(() {
-              _obscurePassword = !_obscurePassword; // Đảo ngược trạng thái khi nhấn nút
+              _obscurePassword = !_obscurePassword;
             });
           },
         ),
@@ -119,90 +102,94 @@ class _SigninPageState extends State<SigninPage> {
     );
   }
 
-  Widget _createAccountButton(BuildContext context) {
-    return Builder(
-      builder: (context) {
-        return Container(
-          width: double.infinity, // Full width button
-          height: 50, // Fixed height for better appearance
-          decoration: BoxDecoration(
+  Widget _loginButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : () => _handleSignIn(context),
+        style: ElevatedButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: const Color(0xff2A4ECA),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Color(0xff2A4ECA).withOpacity(0.3),
-                spreadRadius: 2,
-                blurRadius: 5,
-                offset: Offset(0, 3),
-              ),
-            ],
           ),
-          child: ElevatedButton(
-            onPressed: () async {
-              String email = _emailCon.text.trim();
-              String password = _passwordCon.text;
-
-              if (email.isEmpty || !email.contains('@')) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a valid email.')),
-                );
-                return;
-              }
-              if (password.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Password cannot be empty.')),
-                );
-                return;
-              }
-
-              try {
-                UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-                  email: email,
-                  password: password,
-                );
-
-                // Nếu đăng nhập thành công, lưu trạng thái đăng nhập
-                SharedPreferences prefs = await SharedPreferences.getInstance();
-                await prefs.setBool('is_logged_in', true);
-                await prefs.setString('user_id', userCredential.user?.uid ?? '');
-
-                // Chuyển đến HomeLoad
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomeLoad()),
-                );
-              } on FirebaseAuthException catch (e) {
-                String errorMessage = 'An error occurred';
-                if (e.code == 'user-not-found') {
-                  errorMessage = 'No user found for that email.';
-                } else if (e.code == 'wrong-password') {
-                  errorMessage = 'Wrong password provided for that user.';
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(errorMessage)),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              foregroundColor: Colors.white,
-              backgroundColor: Color(0xff2A4ECA),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text(
-              'Login',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-            ),
+        ),
+        child: _isLoading
+            ? const SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
           ),
-        );
-      },
+        )
+            : const Text(
+          'Login',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
     );
   }
+
+  Future<void> _handleSignIn(BuildContext context) async {
+    String email = _emailCon.text.trim();
+    String password = _passwordCon.text;
+
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email.')),
+      );
+      return;
+    }
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password cannot be empty.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      // Lưu đăng nhập vào Hive
+      final box = await Hive.openBox('app_box');
+      await box.put('is_logged_in', true);
+      await box.put('user_id', userCredential.user?.uid ?? '');
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeLoad()),
+      );
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'An error occurred';
+      if (e.code == 'user-not-found') {
+        errorMessage = 'No user found for that email.';
+      } else if (e.code == 'wrong-password') {
+        errorMessage = 'Wrong password provided for that user.';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unknown error: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
 
   Widget _signupText(BuildContext context) {
     return Text.rich(
@@ -224,8 +211,8 @@ class _SigninPageState extends State<SigninPage> {
             recognizer: TapGestureRecognizer()
               ..onTap = () {
                 Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => SignupPage(),)
+                  context,
+                  MaterialPageRoute(builder: (context) => SignupPage()),
                 );
               },
           ),

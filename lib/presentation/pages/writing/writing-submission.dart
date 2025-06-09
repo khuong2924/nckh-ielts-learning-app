@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 const String apiUrl = "https://api.mistral.ai/v1/chat/completions";
@@ -152,8 +152,8 @@ $content2
         print("DEBUG: Raw AI response:\n$content\n");
 
         // Lưu phản hồi vào Supabase (test_results)
-        final prefs = await SharedPreferences.getInstance();
-        final userId = prefs.getString('user_id') ?? '';
+        final box = await Hive.openBox('user_info');
+        final userId = box.get('user_id', defaultValue: '');
         final testId = widget.submissions.length == 2 ?  // lấy testId từ phần đầu
         (widget.submissions[0]['test_id'] ?? '0') : '0';
 

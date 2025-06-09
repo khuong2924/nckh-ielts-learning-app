@@ -1,6 +1,8 @@
  import 'package:auth/presentation/pages/flashcard/flashcard-home.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/adapters.dart';
 import 'firebase_options.dart'; // File được tạo bởi Firebase CLI
 import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase package
 import 'package:auth/presentation/pages/flashcard/vocabulary-main.dart';
@@ -31,6 +33,7 @@ Future<void> main() async {
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qanRkZWdpYml5dGhicnFoZGtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzNjA0MTAsImV4cCI6MjA1MTkzNjQxMH0.bkQUcjjlb7tBOokl0yWX01z4tz1A7DDS3DryVu_6HnI',
   );
+  await Hive.initFlutter();
 
   runApp(const MyApp());
 }
@@ -46,14 +49,6 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      // home: ReadingDone(
-      //   score: 7.5,
-      //   timeTaken: 3600,
-      //   correctAnswersPerPart: sampleCorrectAnswers,
-      //   userAnswers: sampleUserAnswers,
-      //   parts: sampleParts,
-      //   partAnswers: samplePartAnswers,
-      // ),
       home: SigninPage(),
     );
   }

@@ -1,12 +1,12 @@
 import 'package:auth/presentation/pages/flashcard/vocabulary-item.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 import '../../model/Vocabulary.dart';
 import 'flashcard-learning.dart';
-import 'learning-category.dart';
+import '../../model/learning-category.dart';
 import 'package:auth/presentation/pages/flashcard/learning-category-card.dart';
 import 'package:auth/presentation/pages/flashcard/flashcard-quiz.dart';
 import 'package:auth/presentation/pages/flashcard/flashcard-test-typing.dart';
@@ -52,8 +52,8 @@ class _VocabularyScreenState extends State<VocabularyMain>
   }
 
   Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    userId = prefs.getString('user_id') ?? '';
+    final box = await Hive.openBox('app_box');
+    userId = box.get('user_id', defaultValue: '') ?? '';
     await _loadVocabularyForTopic(widget.topicId);
     await ensureFlashcardProgressInitialized(widget.topicId, userId);
   }

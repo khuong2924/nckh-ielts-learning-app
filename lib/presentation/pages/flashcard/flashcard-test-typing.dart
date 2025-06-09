@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
@@ -32,8 +32,8 @@ class _FlashcardTypingState extends State<FlashcardTyping> {
   }
 
   Future<void> loadUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    userId = prefs.getString('user_id') ?? '';
+    final box = await Hive.openBox('app_box');
+    userId = box.get('user_id', defaultValue: '') ?? '';
     fetchVocabulary();
   }
 

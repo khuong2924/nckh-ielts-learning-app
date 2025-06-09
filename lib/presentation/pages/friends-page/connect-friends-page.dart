@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive/hive.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../route_persistence.dart';
 
 class ConnectFriendPage extends StatefulWidget {
   const ConnectFriendPage({super.key});
@@ -48,12 +50,13 @@ class _ConnectFriendPageState extends State<ConnectFriendPage> {
   @override
   void initState() {
     super.initState();
+    saveLastRoute('connect_friend'); // <--- Thêm dòng này!
     _fetchFriendRequests();
   }
 
   Future<String?> getCurrentUserId() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('user_id');
+    final box = await Hive.openBox('app_box');
+    return box.get('user_id');
   }
 
   Future<void> _fetchFriendRequests() async {

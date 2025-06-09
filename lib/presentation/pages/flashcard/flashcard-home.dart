@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:auth/presentation/pages/flashcard/vocabulary-main.dart';
 import '../../model/FlashCards.dart';
 import '../../model/FlashcardProgress.dart';
+import '../../route_persistence.dart';
 
 class FlashcardHome extends StatefulWidget {
   const FlashcardHome({super.key});
@@ -32,6 +33,7 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
+    saveLastRoute('flashcard_home'); // Thêm dòng này!
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -44,6 +46,7 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
     _animationController.forward();
   }
 
+
   @override
   void dispose() {
     _animationController.dispose();
@@ -51,8 +54,8 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
   }
 
   Future<void> _loadUserId() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    userId = prefs.getString('user_id') ?? '';
+    final box = await Hive.openBox('app_box');
+    userId = box.get('user_id', defaultValue: '') ?? '';
     await _loadFlashcards();
 
     if (_flashcards.isNotEmpty) {
@@ -60,6 +63,7 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
     }
     _loadOverallStatistics();
   }
+
 
   Future<void> _loadFlashcards() async {
     final response = await _supabase.from('flashcards').select();

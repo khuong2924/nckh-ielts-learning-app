@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:auth/presentation/pages/reading/reading-done.dart';
 import 'package:auth/presentation/components/FillInTheBlank.dart';
+
+import '../../route_persistence.dart';
 
 class ListeningTestPage extends StatefulWidget {
   final int testId;
@@ -29,9 +32,56 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
   @override
   void initState() {
     super.initState();
-    _loadData();
-    _startTimer();
+    // Lưu trạng thái route vào shared_preferences
+    saveLastRoute("listening_test", {"testId": widget.testId.toString()});
+    _restoreProgressIfAny().then((_) async {
+      await _loadData();
+      _startTimer();
+    });
   }
+
+
+  Future<void> _initAll() async {
+    await _restoreProgressIfAny(); // <--- khôi phục dữ liệu nếu có
+    await _loadData();            // <--- sau đó mới tải dữ liệu câu hỏi từ DB
+  }
+
+  Future<void> _saveCurrentProgress() async {
+    final box = await Hive.openBox('progress');
+
+    // Đóng gói trạng thái thành map/json để lưu
+    Map<String, dynamic> saveData = {
+      'elapsedTime': elapsedTime,
+      'userAnswers': userAnswers.map((k, v) => MapEntry(k.toString(), v)), // key phải là String
+      'testId': widget.testId,
+    };
+
+    await box.put('listening_test_in_progress_${widget.testId}', jsonEncode(saveData)); // lưu đúng kiểu JSON
+  }
+
+
+// Gọi hàm này mỗi khi userAnswers hoặc elapsedTime thay đổi
+  void _onAnswerChanged(int partId, int questionNumber, String answer) {
+    setState(() {
+      userAnswers[partId] ??= {};
+      userAnswers[partId]![questionNumber] = answer;
+    });
+    _saveCurrentProgress();
+  }
+  Future<void> _restoreProgressIfAny() async {
+    final box = await Hive.openBox('progress');
+    String? saved = box.get('listening_test_in_progress');
+    if (saved != null) {
+      // Nên dùng jsonDecode thay cho toString ở trên nếu muốn chắc chắn
+      final data = jsonDecode(saved);
+      if (data['testId'] == widget.testId) {
+        elapsedTime = data['elapsedTime'] ?? 0;
+        Map answersMap = data['userAnswers'] ?? {};
+        userAnswers = answersMap.map((k, v) => MapEntry(int.parse(k), Map<int, String>.from(v)));
+      }
+    }
+  }
+
   @override
   void dispose() {
     _timer?.cancel(); // Dừng bộ đếm thời gian
@@ -50,8 +100,8 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
 
   Future<void> _loadData() async {
     try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      userId = prefs.getString('user_id') ?? '';
+      final box = await Hive.openBox('user_info');
+      userId = box.get('user_id', defaultValue: '');
 
       final partsResponse = await Supabase.instance.client
           .from('listening_parts')
@@ -159,6 +209,8 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
 
       // **Dừng ngay âm thanh đang phát trước khi chuyển màn hình**
       await _audioPlayer.stop();
+      final box = await Hive.openBox('progress');
+      await box.delete('listening_test_in_progress');
 
       Navigator.pushReplacement(
         context,
@@ -212,11 +264,9 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
                   audioPlayer: _audioPlayer,
                   userAnswers: userAnswers[part['id']] ?? {},
                   onAnswerChanged: (questionNumber, answer) {
-                    setState(() {
-                      userAnswers[part['id']] ??= {};
-                      userAnswers[part['id']]![questionNumber] = answer;
-                    });
+                    _onAnswerChanged(part['id'], questionNumber, answer);
                   },
+
                 );
               },
             ),
