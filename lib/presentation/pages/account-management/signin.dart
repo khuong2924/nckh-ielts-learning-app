@@ -159,7 +159,10 @@ class _SigninPageState extends State<SigninPage> {
     try {
       UserCredential userCredential = await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: email, password: password);
-
+      final uid = userCredential.user?.uid ?? '';
+      print('🔑 Logged in userId: $uid');              // <-- in ra console
+      // hoặc
+      debugPrint('🔑 Logged in userId: $uid');
       // Lưu đăng nhập vào Hive
       final box = await Hive.openBox('app_box');
       await box.put('is_logged_in', true);

@@ -65,10 +65,11 @@ class _ReadingDoneState extends State<ReadingDone> with SingleTickerProviderStat
     super.dispose();
   }
 
-  double _calculateProgress(int part) {
-    int correctAnswers = widget.correctAnswersPerPart[part] ?? 0;
-    int totalQuestions = widget.userAnswers[part]?.length ?? 0;
-    return totalQuestions > 0 ? correctAnswers / totalQuestions : 0.0;
+  /// Trả về tỷ lệ đúng cho part với partId
+  double _calculateProgress(int partId) {
+    final correct = widget.correctAnswersPerPart[partId] ?? 0;
+    final total   = widget.partAnswers[partId]?.length ?? 0;
+    return total > 0 ? correct / total : 0.0;
   }
 
   @override
@@ -358,10 +359,8 @@ class _ReadingDoneState extends State<ReadingDone> with SingleTickerProviderStat
       ),
     );
   }
-
   Widget _buildRoundContainer() {
     return Container(
-      height: 220,
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -379,35 +378,35 @@ class _ReadingDoneState extends State<ReadingDone> with SingleTickerProviderStat
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(5.0),
+        padding: const EdgeInsets.all(12.0),
         child: Container(
-          height: 220,
-          width: double.infinity,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
           ),
+          padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Padding(
-                padding: EdgeInsets.only(top: 15.0, bottom: 20.0),
-                child: Text(
-                  'Your Performance',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0067AC),
-                  ),
+              const Text(
+                'Your Performance',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0067AC),
                 ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildProgress('1', _calculateProgress(1)),
-                  _buildProgress('2', _calculateProgress(2)),
-                  _buildProgress('3', _calculateProgress(3)),
-                ],
+              const SizedBox(height: 16),
+              // Sinh hàng ngang hoặc wrap tuỳ số phần
+              Wrap(
+                alignment: WrapAlignment.spaceEvenly,
+                spacing: 20,
+                runSpacing: 20,
+                children: widget.parts.map((part) {
+                  final pid = part['id'] as int;
+                  final idx = widget.parts.indexOf(part) + 1;
+                  final prog = _calculateProgress(pid);
+                  return _buildProgress(idx.toString(), prog);
+                }).toList(),
               ),
             ],
           ),

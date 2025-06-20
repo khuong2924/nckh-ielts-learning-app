@@ -30,71 +30,74 @@ class _StatisticalState extends State<Statistical> {
   Map<String, Map<String, int>> testCountsByDate = {};
 
   Future<void> fetchStatistics({DateTime? startDate, DateTime? endDate}) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+    final userId = user.id;
+    final now = DateTime.now();
+    final defaultStart = DateTime(now.year, now.month - 1, now.day);
+
+    // reset counters
+    setState(() {
+      readingCount = listeningCount = writingCount = 0;
+      readingTime = listeningTime = writingTime = 0;
+      testCountsByDate.clear();
+    });
+
     try {
-      final user = supabase.auth.currentUser;
-      //final userId = 'XUdnZqIROHW9qhFdYE7kpUvW4RR2'; user test
-      if (user == null) {
-        print('User not logged in');
-        return;
-      }
-      final userId = user.id;
-
-      final now = DateTime.now();
-      final defaultStartDate = DateTime(now.year, now.month - 1, now.day);
-
-      final response = await supabase
+      // 1) Lấy dữ liệu, select join sang tests để có test_type
+      final data = await supabase
           .from('test_results')
-          .select('test_id, completed_at, time, test:test_id(test_type)')
+          .select('completed_at, time, tests(test_type)')
           .eq('user_id', userId)
-          .gte(
-              'completed_at', (startDate ?? defaultStartDate).toIso8601String())
-          .lte('completed_at', (endDate ?? now).toIso8601String());
+          .gte('completed_at', (startDate ?? defaultStart).toIso8601String())
+          .lte('completed_at', (endDate ?? now).toIso8601String())
+          .order('completed_at', ascending: true);
 
-      if (response.isNotEmpty) {
-        for (var item in response) {
-          String testType = item['test']['test_type'];
-          String date = item['completed_at'].split('T')[0];
-          int testTime = item['time'] as int;
+      // 2) data là List<dynamic>
+      final List records = data as List;
 
-          if (testType == 'reading') {
-            readingCount++;
-            readingTime += testTime;
-          } else if (testType == 'listening') {
-            listeningCount++;
-            listeningTime += testTime;
-          } else if (testType == 'writing') {
-            writingCount++;
-            writingTime += testTime;
-          }
-          if (!testCountsByDate.containsKey(date)) {
-            testCountsByDate[date] = {
-              'reading': 0,
-              'listening': 0,
-              'writing': 0
-            };
-          }
-          testCountsByDate[date]![testType] =
-              (testCountsByDate[date]![testType] ?? 0) + 1;
+      // 3) Tally counts, times, map theo ngày
+      for (var item in records) {
+        final date = (item['completed_at'] as String).split('T').first;
+        final t = item['time'] as int;
+        final type = (item['tests']?['test_type'] ?? '') as String;
+
+        switch (type) {
+          case 'reading':
+            readingCount++; readingTime += t;
+            break;
+          case 'listening':
+            listeningCount++; listeningTime += t;
+            break;
+          case 'writing':
+            writingCount++; writingTime += t;
+            break;
         }
 
-        int total = readingCount + listeningCount + writingCount;
-
-        setState(() {
-          totalTests = total;
-          totalTime =
-              response.fold(0, (sum, item) => sum + (item['time'] as int));
-
-          // Tính phần trăm từng loại bài test
-          readingPercent = total > 0 ? (readingCount / total) * 100 : 0;
-          listeningPercent = total > 0 ? (listeningCount / total) * 100 : 0;
-          writingPercent = total > 0 ? (writingCount / total) * 100 : 0;
-          this.testCountsByDate = testCountsByDate;
+        testCountsByDate.putIfAbsent(date, () => {
+          'reading': 0,
+          'listening': 0,
+          'writing': 0,
         });
+        testCountsByDate[date]![type] = (testCountsByDate[date]![type] ?? 0) + 1;
       }
-    } catch (error) {
-      print('Lỗi khi lấy dữ liệu: $error');
+
+      // 4) Tính tổng và phần trăm, cập nhật state
+      final total = readingCount + listeningCount + writingCount;
+      final sumTime = records.fold<int>(0, (s, e) => s + (e['time'] as int));
+
+      setState(() {
+        totalTests = total;
+        totalTime = sumTime;
+        readingPercent = total > 0 ? readingCount / total * 100 : 0;
+        listeningPercent = total > 0 ? listeningCount / total * 100 : 0;
+        writingPercent = total > 0 ? writingCount / total * 100 : 0;
+      });
+    } catch (e) {
+      print('Lỗi khi lấy dữ liệu: $e');
     }
   }
+
 
   @override
   void initState() {

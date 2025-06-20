@@ -26,41 +26,56 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
   Map<int, Map<int, String>> userAnswers = {};
   Map<int, int> correctAnswersPerPart = {};
   bool isLoading = true;
-  int elapsedTime = 0;
+  int totalTime     = 60 * 10*6;   // ví dụ 10 phút = 600s
+  int remainingTime = 60 * 10*6;
   Timer? _timer;
+
+  // ==== Theme state ====
+  bool isDarkMode = false;
 
   @override
   void initState() {
     super.initState();
-    // Lưu trạng thái route vào shared_preferences
     saveLastRoute("listening_test", {"testId": widget.testId.toString()});
-    _restoreProgressIfAny().then((_) async {
-      await _loadData();
-      _startTimer();
+    _loadThemePref().then((_) {
+      _restoreProgressIfAny().then((_) async {
+        await _loadData();
+        _startCountdown();
+      });
     });
   }
 
-
-  Future<void> _initAll() async {
-    await _restoreProgressIfAny(); // <--- khôi phục dữ liệu nếu có
-    await _loadData();            // <--- sau đó mới tải dữ liệu câu hỏi từ DB
+  void _startCountdown() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (remainingTime > 0) {
+        setState(() => remainingTime--);
+      } else {
+        _timer?.cancel();
+        _autoSubmit();    // tùy bạn có muốn tự động nộp khi hết giờ
+      }
+    });
+  }
+  void _autoSubmit() {
+    _submitAnswers();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Time is up! Your answers have been submitted automatically.')),
+    );
+  }
+  // ========== Theme preferences ==========
+  Future<void> _loadThemePref() async {
+    final box = await Hive.openBox('settings');
+    setState(() {
+      isDarkMode = box.get('isDarkMode', defaultValue: false) as bool;
+    });
   }
 
-  Future<void> _saveCurrentProgress() async {
-    final box = await Hive.openBox('progress');
-
-    // Đóng gói trạng thái thành map/json để lưu
-    Map<String, dynamic> saveData = {
-      'elapsedTime': elapsedTime,
-      'userAnswers': userAnswers.map((k, v) => MapEntry(k.toString(), v)), // key phải là String
-      'testId': widget.testId,
-    };
-
-    await box.put('listening_test_in_progress_${widget.testId}', jsonEncode(saveData)); // lưu đúng kiểu JSON
+  Future<void> _toggleTheme() async {
+    setState(() => isDarkMode = !isDarkMode);
+    final box = await Hive.openBox('settings');
+    await box.put('isDarkMode', isDarkMode);
   }
+  // ========================================
 
-
-// Gọi hàm này mỗi khi userAnswers hoặc elapsedTime thay đổi
   void _onAnswerChanged(int partId, int questionNumber, String answer) {
     setState(() {
       userAnswers[partId] ??= {};
@@ -68,39 +83,57 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
     });
     _saveCurrentProgress();
   }
-  Future<void> _restoreProgressIfAny() async {
+
+  /// Ghi tạm tiến trình vào Hive, gồm remainingTime và userAnswers
+  Future<void> _saveCurrentProgress() async {
     final box = await Hive.openBox('progress');
-    String? saved = box.get('listening_test_in_progress');
+    final saveData = {
+      'remainingTime': remainingTime,
+      'userAnswers'  : userAnswers.map((k, v) => MapEntry(k.toString(), v)),
+      'testId'       : widget.testId,
+    };
+    await box.put(
+      'listening_test_in_progress_${widget.testId}',
+      jsonEncode(saveData),
+    );
+  }
+
+  /// Restore lại tiến trình từ Hive, thiết lập remainingTime và userAnswers
+  Future<void> _restoreProgressIfAny() async {
+    final box   = await Hive.openBox('progress');
+    final saved = box.get('listening_test_in_progress_${widget.testId}');
     if (saved != null) {
-      // Nên dùng jsonDecode thay cho toString ở trên nếu muốn chắc chắn
-      final data = jsonDecode(saved);
+      final data = jsonDecode(saved) as Map<String, dynamic>;
       if (data['testId'] == widget.testId) {
-        elapsedTime = data['elapsedTime'] ?? 0;
-        Map answersMap = data['userAnswers'] ?? {};
-        userAnswers = answersMap.map((k, v) => MapEntry(int.parse(k), Map<int, String>.from(v)));
+        // 1) Đặt lại remainingTime (mặc định là totalTime nếu key không tồn tại)
+        remainingTime = data['remainingTime'] as int? ?? totalTime;
+        // 2) Đọc lại userAnswers
+        final rawMap = Map<String, dynamic>.from(data['userAnswers'] ?? {});
+        userAnswers = rawMap.map((partKey, qaMap) {
+          final pid = int.parse(partKey);
+          final inner = Map<String, dynamic>.from(qaMap);
+          final qaTyped = inner.map((qk, qv) =>
+              MapEntry(int.parse(qk), qv.toString())
+          );
+          return MapEntry(pid, qaTyped);
+        });
       }
     }
   }
 
+
   @override
   void dispose() {
-    _timer?.cancel(); // Dừng bộ đếm thời gian
-    _audioPlayer.stop(); // Dừng âm thanh ngay lập tức
-    _audioPlayer.dispose(); // Giải phóng tài nguyên của AudioPlayer
+    _timer?.cancel();
+    _audioPlayer.stop();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        elapsedTime++;
-      });
-    });
-  }
 
   Future<void> _loadData() async {
     try {
-      final box = await Hive.openBox('user_info');
+      final box = await Hive.openBox('app_box');
       userId = box.get('user_id', defaultValue: '');
 
       final partsResponse = await Supabase.instance.client
@@ -109,23 +142,18 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
           .eq('test_id', widget.testId)
           .order('id', ascending: true);
 
-      final List<Map<String, dynamic>> partsData = List<Map<String, dynamic>>.from(partsResponse as List);
-
-      for (var part in partsData) {
+      parts = List<Map<String, dynamic>>.from(partsResponse as List);
+      for (var part in parts) {
         final answersResponse = await Supabase.instance.client
             .from('answers')
             .select()
             .eq('part_id', part['id'])
             .order('question_number', ascending: true);
-
         partAnswers[part['id']] = List<Map<String, dynamic>>.from(answersResponse as List);
         userAnswers[part['id']] ??= {};
       }
 
-      setState(() {
-        parts = partsData;
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading data: $e')),
@@ -135,12 +163,28 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
 
   double _calculateIELTSScore(int correctAnswers, int totalQuestions) {
     if (totalQuestions == 0) return 0.0;
-    double score = (correctAnswers / totalQuestions) * 9;
-    return score.clamp(0, 9);
+    return ((correctAnswers / totalQuestions) * 9).clamp(0, 9);
   }
 
   Future<void> _submitAnswers() async {
-    if (userAnswers.isEmpty) {
+    // 1) Đảm bảo user_id đã load hợp lệ
+    if (userId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not logged in')),
+      );
+      return;
+    }
+
+    // 2) Kiểm tra đã trả lời hết chưa
+    final totalQuestionsExpected = partAnswers.values.fold<int>(
+      0,
+          (sum, list) => sum + list.length,
+    );
+    final totalProvided = userAnswers.values.fold<int>(
+      0,
+          (sum, m) => sum + m.length,
+    );
+    if (totalProvided < totalQuestionsExpected) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please answer all questions before submitting.')),
       );
@@ -148,170 +192,294 @@ class _ListeningTestPageState extends State<ListeningTestPage> {
     }
 
     try {
+      // 3) Tính totalCorrect và chuẩn bị list upsert
       int totalCorrect = 0;
-      int totalQuestions = 0;
-      Map<int, int> correctCountByPart = {};
+      final correctByPart = <int,int>{};
+      final answersUpsert = <Map<String, dynamic>>[];
 
-      for (var entry in userAnswers.entries) {
+      for (final entry in userAnswers.entries) {
         final partId = entry.key;
-        final partUserAnswers = entry.value;
-        int correctCount = 0;
+        int partCorrect = 0;
+        final correctList = partAnswers[partId] ?? [];
 
-        for (var questionEntry in partUserAnswers.entries) {
-          final questionNumber = questionEntry.key;
-          final userAnswer = questionEntry.value.trim().toLowerCase();
+        for (final qa in entry.value.entries) {
+          final qNo = qa.key;
+          final ua  = qa.value.trim().toLowerCase();
+          final matched = correctList.firstWhere(
+                (a) => a['question_number'] == qNo,
+            orElse: () => <String, dynamic>{},
+          );
+          final ca = matched['correct_answer']?.toString().toLowerCase();
 
-          final correctAnswer = partAnswers[partId]?.firstWhere(
-                  (answer) => answer['question_number'] == questionNumber,
-              orElse: () => {'correct_answer': null})['correct_answer']?.toString().toLowerCase();
-
-          if (correctAnswer != null) {
-            totalQuestions++;
-            if (userAnswer == correctAnswer) {
-              correctCount++;
+          if (ca != null) {
+            final isCorrect = ua == ca;
+            if (isCorrect) {
               totalCorrect++;
+              partCorrect++;
             }
-
-            await Supabase.instance.client.from('user_answers').insert({
-              'user_id': userId,
-              'part_id': partId,
-              'question_number': questionNumber,
-              'user_answer': userAnswer,
-              'is_correct': userAnswer == correctAnswer,
+            answersUpsert.add({
+              'user_id'        : userId,
+              'part_id'        : partId,
+              'question_number': qNo,
+              'user_answer'    : ua,
+              'is_correct'     : isCorrect,
             });
           }
         }
-        correctCountByPart[partId] = correctCount;
+
+        correctByPart[partId] = partCorrect;
       }
 
-      setState(() {
-        correctAnswersPerPart = correctCountByPart;
-      });
+      // 4) Manual upsert vào user_answers
+      for (final rec in answersUpsert) {
+        final partId = rec['part_id'] as int;
+        final qNo    = rec['question_number'] as int;
 
-      final score = _calculateIELTSScore(totalCorrect, totalQuestions);
+        final exists = await Supabase.instance.client
+            .from('user_answers')
+            .select()
+            .eq('user_id', rec['user_id'])
+            .eq('part_id', partId)
+            .eq('question_number', qNo);
 
-      await Supabase.instance.client.from('test_results').insert({
-        'user_id': userId,
-        'test_id': widget.testId,
-        'score': score.toInt(),
-        'total_questions': totalQuestions,
-        'time': elapsedTime,
-        'part1': correctCountByPart[1]?.toString() ?? '0',
-        'part2': correctCountByPart[2]?.toString() ?? '0',
-        'part3': correctCountByPart[3]?.toString() ?? '0',
-      });
+        if (exists is List && exists.isNotEmpty) {
+          // update nếu đã tồn tại
+          await Supabase.instance.client
+              .from('user_answers')
+              .update({
+            'user_answer': rec['user_answer'],
+            'is_correct' : rec['is_correct'],
+          })
+              .eq('user_id', rec['user_id'])
+              .eq('part_id', partId)
+              .eq('question_number', qNo);
+        } else {
+          // insert nếu chưa có
+          await Supabase.instance.client
+              .from('user_answers')
+              .insert([rec]);
+        }
+      }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Test submitted! Your IELTS score is ${score.toStringAsFixed(2)}.')),
-      );
+      // 5) Tính điểm thang IELTS (0–9)
+      final rawScore = totalQuestionsExpected > 0
+          ? (totalCorrect / totalQuestionsExpected) * 9
+          : 0.0;
+      final score = rawScore.clamp(0, 9).toDouble();
 
-      _timer?.cancel();
+      // 6) Chuẩn bị record cho test_results
+      final resultRecord = {
+        'user_id'        : userId,
+        'test_id'        : widget.testId,
+        'score'          : score.toInt(),
+        'total_questions': totalQuestionsExpected,
+        'time'           : remainingTime,
+        // Lưu số đúng từng part nếu cần
+        if (correctByPart.containsKey(1)) 'part1': correctByPart[1].toString(),
+        if (correctByPart.containsKey(2)) 'part2': correctByPart[2].toString(),
+        if (correctByPart.containsKey(3)) 'part3': correctByPart[3].toString(),
+      };
 
-      // **Dừng ngay âm thanh đang phát trước khi chuyển màn hình**
-      await _audioPlayer.stop();
+      // 7) Manual upsert vào test_results
+      final existsRes = await Supabase.instance.client
+          .from('test_results')
+          .select()
+          .eq('user_id', userId)
+          .eq('test_id', widget.testId);
+
+      if (existsRes is List && existsRes.isNotEmpty) {
+        await Supabase.instance.client
+            .from('test_results')
+            .update(resultRecord)
+            .eq('user_id', userId)
+            .eq('test_id', widget.testId);
+      } else {
+        await Supabase.instance.client
+            .from('test_results')
+            .insert([resultRecord]);
+      }
+
+      // 8) Xóa cache tạm
       final box = await Hive.openBox('progress');
-      await box.delete('listening_test_in_progress');
+      await box.delete('listening_test_in_progress_${widget.testId}');
+
+      // 9) Thông báo & chuyển màn hình
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Submitted! Your Listening score: ${score.toStringAsFixed(1)}')),
+      );
+      _timer?.cancel();
+      await _audioPlayer.stop();
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => ReadingDone(
+          builder: (_) => ReadingDone(
             score: score,
-            timeTaken: elapsedTime,
-            correctAnswersPerPart: correctCountByPart,
+            timeTaken: totalTime-remainingTime,
+            correctAnswersPerPart: correctByPart,
             userAnswers: userAnswers,
             parts: parts,
             partAnswers: partAnswers,
           ),
         ),
       );
-
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to submit answers: ${e.toString()}')),
+        SnackBar(content: Text('Submission failed: $e')),
       );
     }
   }
 
 
-  String _formatTime(int seconds) {
-    final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
-    final secs = (seconds % 60).toString().padLeft(2, '0');
-    return '$minutes:$secs';
+
+  String _formatTime(int sec) {
+    final m = (sec ~/ 60).toString().padLeft(2, '0');
+    final s = (sec % 60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        bool shouldExit = await _showExitConfirmation();
-        return shouldExit;
+        final ok = await _showExitConfirmation();
+        return ok;
       },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Listening Test')),
-        body: Stack(
-          children: [
-            isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-              itemCount: parts.length,
-              itemBuilder: (context, index) {
-                final part = parts[index];
-                final answers = partAnswers[part['id']] ?? [];
-                return PartWidget(
-                  part: part,
-                  answers: answers,
-                  audioPlayer: _audioPlayer,
-                  userAnswers: userAnswers[part['id']] ?? {},
-                  onAnswerChanged: (questionNumber, answer) {
-                    _onAnswerChanged(part['id'], questionNumber, answer);
+      child: Theme(
+        data: isDarkMode
+            ? ThemeData.dark().copyWith(
+          scaffoldBackgroundColor: Colors.white,
+          primaryColor: Colors.blue,
+        )
+            : ThemeData.light().copyWith(
+          scaffoldBackgroundColor: Colors.white,
+          primaryColor: Colors.blue,
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            title: const Text('Listening Test'),
+            backgroundColor: Colors.blue,
+            actions: [
+              IconButton(
+                icon: Icon(isDarkMode ? Icons.light_mode : Icons.dark_mode),
+                onPressed: _toggleTheme,
+              ),
+            ],
+          ),
+          body: Stack(
+            children: [
+              if (isLoading)
+                const Center(child: CircularProgressIndicator())
+              else
+                ListView.builder(
+                  itemCount: parts.length,
+                  itemBuilder: (ctx, i) {
+                    final part = parts[i];
+                    final answers = partAnswers[part['id']] ?? [];
+                    return PartWidget(
+                      part: part,
+                      answers: answers,
+                      audioPlayer: _audioPlayer,
+                      userAnswers: userAnswers[part['id']] ?? {},
+                      onAnswerChanged: (qNo, ans) {
+                        _onAnswerChanged(part['id'], qNo, ans);
+                      },
+                    );
                   },
-
-                );
-              },
-            ),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Chip(
-                label: Text('Time: ${_formatTime(elapsedTime)}',
-                    style: TextStyle(fontSize: 16)),
-                backgroundColor: Colors.blueAccent,
+                ),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Chip(
+                  label: Text('Time: ${_formatTime(remainingTime)}',
+                      style: const TextStyle(fontSize: 16)),
+                  backgroundColor: Colors.blueAccent,
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: Padding(
+            padding: const EdgeInsets.all(16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _submitAnswers,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                child: const Text('Submit Answers'),
               ),
             ),
-          ],
-        ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(10),
-          child: ElevatedButton(
-            onPressed: _submitAnswers,
-            child: const Text('Submit Answers'),
           ),
         ),
       ),
     );
   }
 
-
   Future<bool> _showExitConfirmation() async {
-    return await showDialog(
+    final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Exit Test?'),
-        content: const Text('Are you sure you want to exit? Your progress will not be saved.'),
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        title: Row(
+          children: const [
+            Icon(Icons.exit_to_app, color: Colors.red),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Exit Test?',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to exit? Your progress will not be saved.',
+          style: TextStyle(fontSize: 16),
+        ),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false), // Không thoát
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey[700],
+              textStyle: const TextStyle(fontSize: 16),
+            ),
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true), // Thoát
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            onPressed: () {
+              _timer?.cancel();
+              Navigator.of(context).pop(true);
+            },
             child: const Text('Exit'),
           ),
         ],
       ),
-    ) ??
-        false; // Mặc định không thoát nếu không chọn gì
+    );
+    return result ?? false;
   }
 
 }
@@ -321,7 +489,7 @@ class PartWidget extends StatelessWidget {
   final List<Map<String, dynamic>> answers;
   final AudioPlayer audioPlayer;
   final Map<int, String> userAnswers;
-  final Function(int, String) onAnswerChanged;
+  final void Function(int, String) onAnswerChanged;
 
   const PartWidget({
     Key? key,
@@ -337,42 +505,29 @@ class PartWidget extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.all(10),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              part['part_title'],
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
+            Text(part['part_title'] ?? '', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             Text(part['part_description'] ?? 'No description'),
             const SizedBox(height: 10),
             if (part['audio_url'] != null)
               IconButton(
                 icon: const Icon(Icons.play_arrow, color: Colors.green),
-                onPressed: () async {
-                  try {
-                    await audioPlayer.play(UrlSource(part['audio_url'])); // Sử dụng UrlSource
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error playing audio: $e')),
-                    );
-                  }
-                },
+                onPressed: () => audioPlayer.play(UrlSource(part['audio_url'])),
               ),
             const SizedBox(height: 10),
-            Column(
-              children: answers.map((answer) {
-                return FillInTheBlankQuestion(
-                  questionText: 'Question ${answer['question_number']}',
-                  initialAnswer: userAnswers[answer['question_number']] ?? '',
-                  onAnswerSubmitted: (userAnswer) {
-                    onAnswerChanged(answer['question_number'], userAnswer ?? '');
-                  },
-                );
-              }).toList(),
-            ),
+            ...answers.map((ans) => FillInTheBlankQuestion(
+              questionText: 'Question ${ans['question_number']}',
+              initialAnswer: userAnswers[ans['question_number']] ?? '',
+              onAnswerSubmitted: (val) =>
+                  onAnswerChanged(
+                    ans['question_number'],
+                    (val ?? '').trim(),
+                  ),
+            )),
           ],
         ),
       ),

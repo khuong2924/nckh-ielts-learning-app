@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'writing-submission.dart'; // <-- Đừng quên đổi tên đúng nếu bạn lưu tên khác
+import 'writing-submission.dart'; // Đổi thành import của bạn nếu khác
 
 class WritingPage extends StatefulWidget {
   final int testId;
@@ -17,38 +17,71 @@ class _WritingPageState extends State<WritingPage> {
   List<Map<String, dynamic>> parts = [];
   Map<int, String> userAnswers = {};
   bool isLoading = true;
-  int elapsedTime = 0;
+  int totalTime     = 60 * 10*6;   // ví dụ 10 phút = 600s
+  int remainingTime = 60 * 10*6;
   Timer? _timer;
+
+  // ==== Theme state ====
+  bool isDarkMode = false;
 
   @override
   void initState() {
     super.initState();
+    _loadThemePref();
     _initializePage();
   }
+
+  void _startCountdown() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (remainingTime > 0) {
+        setState(() => remainingTime--);
+      } else {
+        _timer?.cancel();
+        _autoSubmit();    // tùy bạn có muốn tự động nộp khi hết giờ
+      }
+    });
+  }
+  void _autoSubmit() {
+    _submitAnswers();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Time is up! Your answers have been submitted automatically.')),
+    );
+  }
+
+  Future<void> _loadThemePref() async {
+    final box = await Hive.openBox('settings');
+    setState(() {
+      isDarkMode = box.get('isDarkMode', defaultValue: false) as bool;
+    });
+  }
+
+  Future<void> _toggleTheme() async {
+    setState(() => isDarkMode = !isDarkMode);
+    final box = await Hive.openBox('settings');
+    await box.put('isDarkMode', isDarkMode);
+  }
+  // ====================
 
   Future<void> _initializePage() async {
     await _loadUserId();
     await _fetchParts();
-    _startTimer();
+    _startCountdown();
   }
 
   Future<void> _loadUserId() async {
-    final box = await Hive.openBox('user_info');
+    final box = await Hive.openBox('app_box');
     userId = box.get('user_id', defaultValue: '');
   }
 
   Future<void> _fetchParts() async {
     try {
-      final response = await Supabase.instance.client
+      final resp = await Supabase.instance.client
           .from('listening_parts')
           .select()
           .eq('test_id', widget.testId)
           .order('id', ascending: true);
-
-      setState(() {
-        parts = List<Map<String, dynamic>>.from(response);
-        isLoading = false;
-      });
+      parts = List<Map<String,dynamic>>.from(resp as List);
+      setState(() => isLoading = false);
 
       if (parts.length != 2) {
         _showSnackBar('Error: The test must have exactly two tasks.');
@@ -58,85 +91,144 @@ class _WritingPageState extends State<WritingPage> {
     }
   }
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() => elapsedTime++);
-    });
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  void _showSnackBar(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Future<void> _submitAnswers() async {
-    if (userAnswers.length < 2) {
+    // 1) Đảm bảo đã load userId
+    if (userId.isEmpty) {
+      _showSnackBar('Please log in first.');
+      return;
+    }
+
+    // 2) Đảm bảo đã điền đủ 2 phần
+    if (userAnswers.length < parts.length) {
       _showSnackBar('Please complete both tasks before submitting.');
       return;
     }
 
     try {
-      final box = await Hive.openBox('user_info');
-      userId = box.get('user_id', defaultValue: '');
+      // 3) Tạo list submissions để chuyển sang Feedback
+      final submissions = <Map<String, String>>[];
 
-      for (var part in parts) {
-        final partId = part['id'];
-        final answer = userAnswers[partId]?.trim() ?? '';
+      // 4) Chuẩn bị upsert cho user_answers
+      for (final part in parts) {
+        final pid    = part['id'] as int;
+        final answer = (userAnswers[pid]?.trim() ?? '');
 
-        // Chỉ lưu nếu có dữ liệu
+        // Gom submissions
+        final rawDesc     = part['part_description']?.toString() ?? '';
+        final formattedDesc = rawDesc.replaceAll(r'\n', '\n');
+        submissions.add({
+          'task_description': formattedDesc,
+          'user_answer'     : answer,
+        });
+
+        // Nếu answer không rỗng thì upsert
         if (answer.isNotEmpty) {
-          await Supabase.instance.client.from('user_answers').insert({
-            'user_id': userId,
-            'part_id': partId,
-            'question_number': 1, // Vì mỗi part của writing chỉ có 1 câu
-            'user_answer': answer,
-            'is_correct': null, // Không áp dụng với writing
-          });
+          // Kiểm tra xem đã có record chưa
+          final exists = await Supabase.instance.client
+              .from('user_answers')
+              .select()
+              .eq('user_id', userId)
+              .eq('part_id', pid)
+              .eq('question_number', 1);
+
+          if (exists is List && exists.isNotEmpty) {
+            // update
+            await Supabase.instance.client
+                .from('user_answers')
+                .update({
+              'user_answer': answer,
+              'is_correct' : null,
+            })
+                .eq('user_id', userId)
+                .eq('part_id', pid)
+                .eq('question_number', 1);
+          } else {
+            // insert
+            await Supabase.instance.client
+                .from('user_answers')
+                .insert([{
+              'user_id'        : userId,
+              'part_id'        : pid,
+              'question_number': 1,
+              'user_answer'    : answer,
+              'is_correct'     : null,
+            }]);
+          }
         }
       }
 
-      // Chuyển sang màn hình phản hồi
-      final submissions = parts.map((part) {
-        return {
-          "task_description": (part['part_description'] ?? '').toString(),
-          "user_answer": (userAnswers[part['id']] ?? '').toString(),
-        };
-      }).toList();
-
+      // 5) Dừng timer và chuyển màn sang feedback
       _timer?.cancel();
-
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => IeltsFeedbackPage(
+          builder: (_) => IeltsFeedbackPage(
             submissions: submissions,
-            elapsedTime: elapsedTime,
-            testId: widget.testId, // ✅ truyền đúng testId gốc
+            elapsedTime: (totalTime-remainingTime),
+            testId: widget.testId,
           ),
         ),
       );
-
     } catch (e) {
-      _showSnackBar("Error saving answers: ${e.toString()}");
+      _showSnackBar('Error saving answers: $e');
     }
   }
 
 
-
   String _formatTime(int seconds) {
-    final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
-    final secs = (seconds % 60).toString().padLeft(2, '0');
-    return '$minutes:$secs';
+    final m = (seconds ~/ 60).toString().padLeft(2,'0');
+    final s = (seconds % 60).toString().padLeft(2,'0');
+    return '$m:$s';
   }
 
+
   Future<bool> _showExitConfirmation() async {
-    return await showDialog(
+    final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Exit Test?'),
-        content: const Text('Are you sure you want to exit? Your progress will not be saved.'),
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        title: Row(
+          children: const [
+            Icon(Icons.exit_to_app, color: Colors.red),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Exit Test?',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to exit? Your progress will not be saved.',
+          style: TextStyle(fontSize: 16),
+        ),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
           TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey[700],
+              textStyle: const TextStyle(fontSize: 16),
+            ),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             onPressed: () {
               _timer?.cancel();
               Navigator.of(context).pop(true);
@@ -145,46 +237,87 @@ class _WritingPageState extends State<WritingPage> {
           ),
         ],
       ),
-    ) ??
-        false;
+    );
+    return result ?? false;
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: _showExitConfirmation,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Writing Test')),
-        body: Stack(
-          children: [
-            isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-              itemCount: parts.length,
-              itemBuilder: (context, index) {
-                final part = parts[index];
-                return PartWidget(
-                  part: part,
-                  userAnswer: userAnswers[part['id']] ?? '',
-                  onAnswerChanged: (answer) {
-                    setState(() => userAnswers[part['id']] = answer);
+      child: Theme(
+        data: isDarkMode
+            ? ThemeData.dark().copyWith(
+            scaffoldBackgroundColor: Colors.white,
+            primaryColor: Colors.blue)
+            : ThemeData.light().copyWith(
+            scaffoldBackgroundColor: Colors.white,
+            primaryColor: Colors.blue),
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            title: const Text('Writing Test'),
+            backgroundColor: Colors.blue,
+            actions: [
+              IconButton(
+                icon: Icon(isDarkMode ? Icons.light_mode : Icons.dark_mode),
+                onPressed: _toggleTheme,
+              ),
+            ],
+          ),
+          body: Stack(
+            children: [
+              if (isLoading)
+                const Center(child: CircularProgressIndicator())
+              else
+                ListView.builder(
+                  itemCount: parts.length,
+                  itemBuilder: (_, idx) {
+                    final part = parts[idx];
+                    return PartWidget(
+                      part: part,
+                      userAnswer: userAnswers[part['id']] ?? '',
+                      onAnswerChanged: (txt) {
+                        setState(() => userAnswers[part['id']] = txt);
+                      },
+                    );
                   },
-                );
-              },
-            ),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Chip(
-                label: Text('Time: ${_formatTime(elapsedTime)}', style: const TextStyle(fontSize: 16)),
-                backgroundColor: Colors.blueAccent,
+                ),
+              Positioned(
+                top: 10, right: 10,
+                child: Chip(
+                  label: Text(
+                    'Time left: ${_formatTime(remainingTime)}',
+                    style: const TextStyle(fontSize: 16.0),
+                  ),
+                  backgroundColor: Colors.blueAccent,
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50.0,
+              child: ElevatedButton(
+                onPressed: _submitAnswers,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  elevation: 8.0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 18.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                child: const Text('Submit Answers'),
               ),
             ),
-          ],
-        ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(10),
-          child: ElevatedButton(onPressed: _submitAnswers, child: const Text('Submit Answers')),
+          ),
         ),
       ),
     );

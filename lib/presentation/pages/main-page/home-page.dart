@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import '../../components/BottomNavBar.dart';
+import '../../components/ChatSupport.dart';
 import '../../components/CustomAppBar.dart';
 import '../account-management/signin.dart';
 import 'package:auth/presentation/route_persistence.dart';
@@ -104,12 +105,19 @@ class _HomeLoadState extends State<HomeLoad> with SingleTickerProviderStateMixin
             child: FloatingActionButton(
               backgroundColor: const Color(0xff2A4ECA),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 8,
               onPressed: () {
-
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => const ChatSupportSheet(),
+                );
               },
               child: const Icon(Icons.chat_bubble_outline),
             ),
           ),
+
         ],
       ),
     );

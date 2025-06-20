@@ -3,8 +3,8 @@ import 'package:auth/presentation/pages/writing/writing-page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:auth/presentation/pages/test-page/listening-page.dart';
+import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:auth/presentation/pages/test-page/viewanswer.dart';
 
 import '../pages/writing/writing-submission.dart';
@@ -31,8 +31,8 @@ class TestCard extends StatelessWidget {
 
   // Your existing methods remain unchanged
   Future<String?> _getUserId() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('user_id') ?? '';
+    final box = await Hive.openBox('app_box');
+    return box.get('user_id');
   }
 
   Future<Map<int, String>> _getUserAnswers(String userId, int partId) async {
