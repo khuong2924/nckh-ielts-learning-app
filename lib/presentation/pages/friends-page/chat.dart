@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import '../../components/CustomAppBar.dart';
 import '../../route_persistence.dart';
 
@@ -20,7 +19,6 @@ class _ChatState extends State<Chat> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _controller = TextEditingController();
-  bool _showEmojiPicker = false;
 
   @override
   void initState() {
@@ -164,29 +162,10 @@ class _ChatState extends State<Chat> {
             ),
             Column(
               children: [
-                if (_showEmojiPicker)
-                  SizedBox(
-                    height: 250,
-                    child: EmojiPicker(
-                      onEmojiSelected: (category, emoji) {
-                        setState(() {
-                          _controller.text += emoji.emoji;
-                        });
-                      },
-                    ),
-                  ),
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.black54),
-                        onPressed: () {
-                          setState(() {
-                            _showEmojiPicker = !_showEmojiPicker;
-                          });
-                        },
-                      ),
                       Expanded(
                         child: TextField(
                           controller: _controller,

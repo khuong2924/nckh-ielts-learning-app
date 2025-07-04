@@ -8,6 +8,9 @@ class Vocabulary {
   final String? example;
   final String? imageUrl;
   final String? audioUrl;
+  final String? createdBy;
+  final List<String>? synonyms;
+  final List<String>? antonyms;
 
   bool isLearned;
   bool isFavorite;
@@ -22,6 +25,9 @@ class Vocabulary {
     this.example,
     this.imageUrl,
     this.audioUrl,
+    this.createdBy,
+    this.synonyms,
+    this.antonyms,
     this.isLearned = false,
     this.isFavorite = false,
   });
@@ -40,6 +46,9 @@ class Vocabulary {
       example: example,
       imageUrl: imageUrl,
       audioUrl: audioUrl,
+      createdBy: createdBy,
+      synonyms: synonyms,
+      antonyms: antonyms,
       isLearned: isLearned ?? this.isLearned,
       isFavorite: isFavorite ?? this.isFavorite,
     );
@@ -54,8 +63,15 @@ class Vocabulary {
       pronunciation: map['pronunciation'] as String?,
       partOfSpeech: map['part_of_speech'] as String?,
       example: map['example'] as String?,
-      audioUrl: map['audio_url'] as String?,
       imageUrl: map['image_url'] as String?,
+      audioUrl: map['audio_url'] as String?,
+      createdBy: map['create_by'] as String?,
+      synonyms: map['synonyms'] != null
+          ? List<String>.from(map['synonyms'])
+          : null,
+      antonyms: map['antonyms'] != null
+          ? List<String>.from(map['antonyms'])
+          : null,
       isLearned: map['is_learned'] as bool? ?? false,
       isFavorite: map['is_favorite'] as bool? ?? false,
     );

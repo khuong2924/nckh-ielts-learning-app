@@ -5,14 +5,20 @@ import '../../model/Vocabulary.dart';
 
 class VocabularyItem extends StatelessWidget {
   final Vocabulary vocabulary;
+  final bool canEdit; // 👈 THÊM DÒNG NÀY
   final Future<void> Function(bool)? onLearningStatusChanged;
   final Future<void> Function(bool)? onFavoriteChanged;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const VocabularyItem({
     Key? key,
     required this.vocabulary,
+    required this.canEdit, // 👈 THÊM DÒNG NÀY
     this.onLearningStatusChanged,
     this.onFavoriteChanged,
+    this.onEdit,
+    this.onDelete,
   }) : super(key: key);
 
   @override
@@ -27,15 +33,19 @@ class VocabularyItem extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Từ vựng tiếng Anh
           Expanded(
             flex: 2,
             child: Padding(
               padding: EdgeInsets.only(left: 15),
-              child: Text(vocabulary.englishWord,
+              child: Text(
+                vocabulary.englishWord,
                 style: TextStyle(fontWeight: FontWeight.w500),
               ),
             ),
           ),
+
+          // View Button
           Container(width: 1, height: double.infinity, color: Color(0xFF0067AC)),
           Expanded(
             flex: 2,
@@ -44,8 +54,8 @@ class VocabularyItem extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () => _showVocabularyDetails(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF0067AC),      // Màu nền
-                  foregroundColor: Colors.white,          // Màu chữ
+                  backgroundColor: Color(0xFF0067AC),
+                  foregroundColor: Colors.white,
                 ),
                 child: Text(
                   "View",
@@ -56,8 +66,9 @@ class VocabularyItem extends StatelessWidget {
                 ),
               ),
             ),
-
           ),
+
+          // Nút yêu thích
           IconButton(
             icon: Icon(
               vocabulary.isFavorite ? Icons.favorite : Icons.favorite_border,
@@ -69,6 +80,8 @@ class VocabularyItem extends StatelessWidget {
               }
             },
           ),
+
+          // Nút đã học
           IconButton(
             icon: Icon(
               vocabulary.isLearned ? Icons.check_circle : Icons.check_circle_outline,
@@ -80,6 +93,18 @@ class VocabularyItem extends StatelessWidget {
               }
             },
           ),
+
+          // ✅ Thêm nút sửa và xóa nếu được phép
+          if (canEdit) ...[
+            IconButton(
+              icon: Icon(Icons.edit, color: Colors.orange),
+              onPressed: onEdit,
+            ),
+            IconButton(
+              icon: Icon(Icons.delete, color: Colors.red),
+              onPressed: onDelete,
+            ),
+          ],
         ],
       ),
     );
@@ -200,6 +225,22 @@ class VocabularyItem extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (canEdit)
+                  PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert, color: Color(0xFF0067AC)),
+                    onSelected: (value) {
+                      if (value == 'edit' && onEdit != null) {
+                        onEdit!();
+                      } else if (value == 'delete' && onDelete != null) {
+                        onDelete!();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    ],
+                  ),
+
               ],
             ),
           ),

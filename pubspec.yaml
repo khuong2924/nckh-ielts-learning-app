@@ -15,7 +15,6 @@ dependencies:
   audioplayers: ^5.2.1
   flutter:
     sdk: flutter
-  emoji_picker_flutter: ^1.6.3
   image_picker: ^1.0.4
   record: ^4.4.4
   permission_handler: ^11.0.1

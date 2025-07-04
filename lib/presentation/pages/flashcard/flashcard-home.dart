@@ -20,7 +20,7 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
   final SupabaseClient _supabase = Supabase.instance.client;
   List<Flashcard> _flashcards = [];
   List<FlashcardProgress> _progressList = [];
-  int _currentIndex = 1; // Set to 1 for Flashcard tab
+  int _currentIndex = 1;
   late String userId;
   late AnimationController _animationController;
   late Animation<double> _animation;
@@ -64,9 +64,11 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
     _loadOverallStatistics();
   }
 
-
   Future<void> _loadFlashcards() async {
-    final response = await _supabase.from('flashcards').select();
+    final response = await _supabase
+        .from('flashcards')
+        .select()
+        .or('author.eq.$userId,author.is.null,author.eq.admin');
 
     if (response != null && response.isNotEmpty) {
       setState(() {
@@ -75,6 +77,32 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
     } else {
       print('Error loading flashcards');
     }
+  }
+
+  Future<String?> _showEditTopicDialog(String currentTitle) async {
+    final controller = TextEditingController(text: currentTitle);
+    return await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Edit Topic"),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: "Topic Name"),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () {
+              final newTitle = controller.text.trim();
+              if (newTitle.isNotEmpty) {
+                Navigator.pop(context, newTitle);
+              }
+            },
+            child: const Text("Save"),
+          )
+        ],
+      ),
+    );
   }
 
   Future<void> _loadFlashcardsProgress() async {
@@ -347,6 +375,62 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
             fontFamily: 'Montserrat-Bold',
           ),
         ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Flashcards',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF202244),
+                fontFamily: 'Montserrat-Bold',
+              ),
+            ),
+            Row(
+              children: [
+                IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4681DA).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add, color: Color(0xFF4681DA), size: 22),
+                  ),
+                  onPressed: () async {
+                    final created = await _showCreateFlashcardDialog();
+                    if (created) {
+                      await _loadFlashcards();
+                      await _loadFlashcardsProgress();
+                    }
+                  },
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4681DA).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: SvgPicture.asset(
+                      'lib/icons/ic-search.svg',
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFF4681DA),
+                        BlendMode.srcIn,
+                      ),
+                      height: 20,
+                    ),
+                  ),
+                  onPressed: () {
+                    // Handle search
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
         TextButton(
           onPressed: () {
             // Show all topics
@@ -364,6 +448,77 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
       ],
     );
   }
+  Future<bool> _showCreateFlashcardDialog() async {
+    final TextEditingController _topicController = TextEditingController();
+
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create New Flashcard'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _topicController,
+              decoration: const InputDecoration(
+                labelText: 'Topic Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Number of Words',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.black54,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.grey.shade100,
+              ),
+              child: const Text(
+                '0',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final topic = _topicController.text.trim();
+              if (topic.isNotEmpty) {
+                await _supabase.from('flashcards').insert({
+                  'topic': topic,
+                  'total_words': 0,
+                  'author': userId,
+                });
+
+                Navigator.pop(context, true);
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
 
   Widget _buildTopicList() {
     if (_flashcards.isEmpty) {
@@ -385,13 +540,14 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
             progress: 0,
           ),
         ).progress;
-        
+
         return _buildTopicCard(
           flashcard.topic,
           flashcard.totalWords.toString(),
           progress,
           flashcard.id,
           getRandomColor(index),
+          flashcard.author,
         );
       },
     );
@@ -443,7 +599,14 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
   }
 
   Widget _buildTopicCard(
-      String title, String totalWords, int currentProgress, String topicId, Color accentColor) {
+      String title,
+      String totalWords,
+      int currentProgress,
+      String topicId,
+      Color accentColor,
+      String? author,
+      ) {
+    print('🧪 author: [$author], userId: [$userId], match: ${author?.trim() == userId.trim()}');
     double progressPercent = int.parse(totalWords) > 0
         ? currentProgress / int.parse(totalWords)
         : 0.0;
@@ -568,24 +731,73 @@ class _FlashcardHomeState extends State<FlashcardHome> with SingleTickerProvider
                     ),
                     child: const Row(
                       children: [
-                        Icon(
-                          Icons.play_arrow_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
+                        Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
                         SizedBox(width: 4),
-                        Text(
-                          'Start',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Montserrat-Bold',
-                          ),
-                        ),
+                        Text('Start', style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Montserrat-Bold',
+                        )),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  if (author != null && author.trim() == userId.trim())
+                    Row(
+                      children: [
+                        // 🟦 Nút sửa
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, color: Colors.orangeAccent),
+                          onPressed: () async {
+                            final newTopic = await _showEditTopicDialog(title);
+                            if (newTopic != null && newTopic != title) {
+                              await Supabase.instance.client
+                                  .from('flashcards')
+                                  .update({'topic': newTopic})
+                                  .eq('id', topicId);
+                              await _loadFlashcards();
+                            }
+                          },
+                        ),
+
+                        // 🟥 Nút xóa
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                          onPressed: () async {
+                            final confirmed = await showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text("Delete Topic"),
+                                content: const Text("This will also delete all vocabulary in this topic. Are you sure?"),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+                                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
+                                ],
+                              ),
+                            );
+
+                            if (confirmed == true) {
+                              // 🔥 Xoá toàn bộ vocabulary thuộc topic này
+                              await Supabase.instance.client
+                                  .from('flashcard_words')
+                                  .delete()
+                                  .eq('flashcard_id', topicId);
+
+                              // 🔥 Xoá topic
+                              await Supabase.instance.client
+                                  .from('flashcards')
+                                  .delete()
+                                  .eq('id', topicId);
+
+                              await _loadFlashcards();
+                              await _loadFlashcardsProgress();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+
                 ],
               ),
             ),

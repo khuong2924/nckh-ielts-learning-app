@@ -2,6 +2,7 @@ import 'package:auth/presentation/pages/flashcard/vocabulary-item.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../components/AddVocabularyDialog.dart';
 import '../../components/BottomNavBar.dart';
 import '../../components/CustomAppBar.dart';
 import '../../model/Vocabulary.dart';
@@ -60,7 +61,7 @@ class _VocabularyScreenState extends State<VocabularyMain>
   Future<void> _loadVocabularyForTopic(String topicId) async {
     final response = await Supabase.instance.client
         .from('flashcard_words')
-        .select()
+        .select('id, word, meaning, pronunciation, part_of_speech, example, audio_url, create_by')
         .eq('flashcard_id', topicId);
 
     final vocabList = (response as List)
@@ -74,7 +75,12 @@ class _VocabularyScreenState extends State<VocabularyMain>
       audioUrl: e['audio_url'],
       isLearned: false,
       isFavorite: false,
+      createdBy: e['create_by'], // ⚠️ nhớ đã thêm trong model
     ))
+        .where((vocab) =>
+    vocab.createdBy == null ||
+        vocab.createdBy == userId ||
+        vocab.createdBy == 'admin') // ✅ lọc tại đây
         .toList();
 
     for (var vocab in vocabList) {
@@ -276,9 +282,22 @@ class _VocabularyScreenState extends State<VocabularyMain>
                   color: Color(0xFF202244),
                 ),
               ),
+              IconButton(
+                icon: Icon(Icons.add),
+                onPressed: () async {
+                  final added = await showDialog(
+                    context: context,
+                    builder: (context) => AddVocabularyDialog(topicId: widget.topicId, userId: userId),
+                  );
+                  if (added == true) {
+                    _loadVocabularyForTopic(widget.topicId);
+                  }
+                },
+              ),
             ],
           ),
         ),
+
         TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -341,25 +360,25 @@ class _VocabularyScreenState extends State<VocabularyMain>
 
   Widget _buildVocabularyList(List<Vocabulary> items) {
     return ListView.builder(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       itemCount: items.length,
       itemBuilder: (context, index) {
         return VocabularyItem(
           vocabulary: items[index],
+          canEdit: items[index].createdBy == userId,
           onLearningStatusChanged: (value) async {
             setState(() {
               final vocabIndex = vocabularies.indexOf(items[index]);
-              vocabularies[vocabIndex] = vocabularies[vocabIndex].copyWith(isLearned: value);
+              vocabularies[vocabIndex] =
+                  vocabularies[vocabIndex].copyWith(isLearned: value);
             });
-
             final updated = vocabularies[index];
             await Supabase.instance.client
                 .from('user_vocabulary_progress')
                 .update({
               'is_learned': updated.isLearned,
               'is_favorite': updated.isFavorite,
-            })
-                .match({
+            }).match({
               'user_id': userId,
               'vocabulary_id': updated.id,
             });
@@ -367,24 +386,67 @@ class _VocabularyScreenState extends State<VocabularyMain>
           onFavoriteChanged: (value) async {
             setState(() {
               final vocabIndex = vocabularies.indexOf(items[index]);
-              vocabularies[vocabIndex] = vocabularies[vocabIndex].copyWith(isFavorite: value);
+              vocabularies[vocabIndex] =
+                  vocabularies[vocabIndex].copyWith(isFavorite: value);
             });
-
             final updated = vocabularies[index];
             await Supabase.instance.client
                 .from('user_vocabulary_progress')
                 .update({
               'is_learned': updated.isLearned,
               'is_favorite': updated.isFavorite,
-            })
-                .match({
+            }).match({
               'user_id': userId,
               'vocabulary_id': updated.id,
             });
+          },
+          onEdit: () async {
+            final updated = await showDialog(
+              context: context,
+              builder: (context) => AddVocabularyDialog(
+                topicId: widget.topicId,
+                userId: userId,
+                existingVocabulary: items[index],
+              ),
+            );
+            if (updated == true) {
+              await _loadVocabularyForTopic(widget.topicId);
+            }
+          },
+          onDelete: () async {
+            final confirm = await showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Confirm Delete'),
+                content: const Text('Are you sure you want to delete this vocabulary?'),
+                actions: [
+                  TextButton(
+                    child: const Text('Cancel'),
+                    onPressed: () => Navigator.pop(context, false),
+                  ),
+                  TextButton(
+                    child: const Text('Delete'),
+                    onPressed: () => Navigator.pop(context, true),
+                  ),
+                ],
+              ),
+            );
+            if (confirm == true) {
+              final vocabId = items[index].id;
+              await Supabase.instance.client
+                  .from('flashcard_words')
+                  .delete()
+                  .eq('id', vocabId);
+              await Supabase.instance.client
+                  .from('user_vocabulary_progress')
+                  .delete()
+                  .eq('vocabulary_id', vocabId)
+                  .eq('user_id', userId);
+              await _loadVocabularyForTopic(widget.topicId);
+            }
           },
         );
       },
     );
   }
-
 }
