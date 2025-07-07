@@ -109,31 +109,18 @@ class VocabularyItem extends StatelessWidget {
       ),
     );
   }
-
   void _showVocabularyDetails(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20.0),
-          ),
-          child: Container(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+          child: SingleChildScrollView(
             padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.blue.withOpacity(0.1),
-                  blurRadius: 10,
-                  spreadRadius: 5,
-                )
-              ],
-            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Header
                 Container(
                   margin: EdgeInsets.only(bottom: 15),
                   padding: EdgeInsets.symmetric(vertical: 10),
@@ -144,7 +131,7 @@ class VocabularyItem extends StatelessWidget {
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
+                    children: const [
                       Icon(Icons.language, color: Color(0xFF0067AC)),
                       SizedBox(width: 10),
                       Text(
@@ -158,94 +145,95 @@ class VocabularyItem extends StatelessWidget {
                     ],
                   ),
                 ),
-                Card(
-                  elevation: 3,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(15),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: 5),
-                        Text(
-                          vocabulary.englishWord,
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                        Text(
-                          'meaning',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: 5),
-                        Text(
-                          vocabulary.meaning,
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
+
+                // 🔽 Hình ảnh nếu có
+                if (vocabulary.imageUrl != null && vocabulary.imageUrl!.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      vocabulary.imageUrl!,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.broken_image, size: 48, color: Colors.grey),
                     ),
                   ),
-                ),
-                SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                // 🔽 Thông tin chi tiết
+                _buildDetailRow('Word', vocabulary.englishWord),
+                _buildDetailRow('Meaning', vocabulary.meaning),
+                if (vocabulary.pronunciation != null && vocabulary.pronunciation!.isNotEmpty)
+                  _buildDetailRow('Pronunciation', "/${vocabulary.pronunciation}/"),
+                if (vocabulary.partOfSpeech != null && vocabulary.partOfSpeech!.isNotEmpty)
+                  _buildDetailRow('Part of Speech', vocabulary.partOfSpeech!),
+                if (vocabulary.example != null && vocabulary.example!.isNotEmpty)
+                  _buildDetailRow('Example', '"${vocabulary.example!}"'),
+                if (vocabulary.synonyms != null && vocabulary.synonyms!.isNotEmpty)
+                  _buildDetailRow('Synonyms', vocabulary.synonyms!.join(', ')),
+                if (vocabulary.antonyms != null && vocabulary.antonyms!.isNotEmpty)
+                  _buildDetailRow('Antonyms', vocabulary.antonyms!.join(', ')),
+
+                const SizedBox(height: 20),
+
+                // Nút Close
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 30),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 30),
                     decoration: BoxDecoration(
                       color: Color(0xFF0067AC),
                       borderRadius: BorderRadius.circular(30),
                     ),
-                    child: Text(
-                      'Close',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: const Text('Close', style: TextStyle(color: Colors.white)),
                   ),
                 ),
+
                 if (canEdit)
                   PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert, color: Color(0xFF0067AC)),
+                    icon: const Icon(Icons.more_vert, color: Color(0xFF0067AC)),
                     onSelected: (value) {
-                      if (value == 'edit' && onEdit != null) {
-                        onEdit!();
-                      } else if (value == 'delete' && onDelete != null) {
-                        onDelete!();
-                      }
+                      if (value == 'edit' && onEdit != null) onEdit!();
+                      if (value == 'delete' && onDelete != null) onDelete!();
                     },
-                    itemBuilder: (context) => [
+                    itemBuilder: (context) => const [
                       PopupMenuItem(value: 'edit', child: Text('Edit')),
                       PopupMenuItem(value: 'delete', child: Text('Delete')),
                     ],
                   ),
-
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0067AC),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -61,7 +61,7 @@ class _VocabularyScreenState extends State<VocabularyMain>
   Future<void> _loadVocabularyForTopic(String topicId) async {
     final response = await Supabase.instance.client
         .from('flashcard_words')
-        .select('id, word, meaning, pronunciation, part_of_speech, example, audio_url, create_by')
+        .select('id, word, meaning, pronunciation, part_of_speech, example, audio_url, image_url, create_by')
         .eq('flashcard_id', topicId);
 
     final vocabList = (response as List)
@@ -73,14 +73,15 @@ class _VocabularyScreenState extends State<VocabularyMain>
       partOfSpeech: e['part_of_speech'],
       example: e['example'],
       audioUrl: e['audio_url'],
+      imageUrl: e['image_url'],           // ✅ THÊM DÒNG NÀY
       isLearned: false,
       isFavorite: false,
-      createdBy: e['create_by'], // ⚠️ nhớ đã thêm trong model
+      createdBy: e['create_by'],
     ))
         .where((vocab) =>
     vocab.createdBy == null ||
         vocab.createdBy == userId ||
-        vocab.createdBy == 'admin') // ✅ lọc tại đây
+        vocab.createdBy == 'admin')
         .toList();
 
     for (var vocab in vocabList) {
