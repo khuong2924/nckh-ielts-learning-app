@@ -15,41 +15,40 @@ import 'package:auth/presentation/pages/account-management/splash_screen.dart';
 import 'package:auth/presentation/pages/statistical/statistical.dart';
 import 'package:auth/presentation/pages/friends-page/chat.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await dotenv.load(fileName: ".env");
-  } catch (e) {
-    print("Lỗi khi load .env: $e");
-  }
-  // Khởi tạo Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+ void main() async {
+   WidgetsFlutterBinding.ensureInitialized();
+   await dotenv.load(fileName: ".env");
 
-  // Khởi tạo Supabase
-  await Supabase.initialize(
-    url: 'https://ojjtdegibiythbrqhdkg.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qanRkZWdpYml5dGhicnFoZGtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzNjA0MTAsImV4cCI6MjA1MTkzNjQxMH0.bkQUcjjlb7tBOokl0yWX01z4tz1A7DDS3DryVu_6HnI',
-  );
-  await Hive.initFlutter();
+   await Firebase.initializeApp(
+     options: DefaultFirebaseOptions.currentPlatform,
+   );
 
-  runApp(const MyApp());
-}
+   await Supabase.initialize(
+     url: 'https://ojjtdegibiythbrqhdkg.supabase.co',
+     anonKey: '...',
+   );
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+   await Hive.initFlutter();
+   final box = await Hive.openBox('app_box');
+   final isLoggedIn = box.get('is_logged_in', defaultValue: false);
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      debugShowCheckedModeBanner: false,
-      home: SigninPage(),
-    );
-  }
-}
+   runApp(MyApp(isLoggedIn: isLoggedIn));
+ }
+
+ class MyApp extends StatelessWidget {
+   final bool isLoggedIn;
+
+   const MyApp({super.key, required this.isLoggedIn});
+
+   @override
+   Widget build(BuildContext context) {
+     return MaterialApp(
+       title: 'Flutter App',
+       theme: ThemeData(
+         primarySwatch: Colors.blue,
+       ),
+       debugShowCheckedModeBanner: false,
+       home: isLoggedIn ? const HomeLoad() : const SigninPage(),
+     );
+   }
+ }
