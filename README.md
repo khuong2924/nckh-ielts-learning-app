@@ -104,3 +104,7 @@ lib/
 
 This project is developed for academic and research purposes only.
 Not licensed for commercial use.
+
+## 📄 Link demo:
+https://drive.google.com/file/u/1/d/1_DgnfJ7LtNTMWoYQo1kBwSuGGEhqhimP/view
+
