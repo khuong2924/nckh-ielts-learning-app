@@ -5,18 +5,18 @@ A cross-platform mobile & web application designed to support IELTS learners wit
 
 ---
 
-## 🚀 Features
+## Features
 
-- 📚 IELTS question bank (Reading, Listening) with answer review
-- ⏱️ Time-tracked practice sessions with result analysis
-- 🔐 Firebase & Supabase authentication
-- ☁️ Real-time data sync between devices
-- 📊 Personal dashboard and progress analytics
-- 🌐 Web, Android, and iOS support using Flutter single codebase
+- IELTS question bank (Reading, Listening) with answer review
+- Time-tracked practice sessions with result analysis
+- Firebase & Supabase authentication
+- Real-time data sync between devices
+- Personal dashboard and progress analytics
+- Web, Android, and iOS support using Flutter single codebase
 
 ---
 
-## 🛠️ Technologies Used
+## Technologies Used
 
 - Frontend: Flutter (Web, Android, iOS)
 - State Management: Bloc, Provider
@@ -45,9 +45,9 @@ GEMINI_API=
 
 ---
 
-## 📦 Getting Started
+## Getting Started
 
-> ⚠️ You need [Flutter SDK](https://docs.flutter.dev/get-started/install) installed.
+> You need [Flutter SDK](https://docs.flutter.dev/get-started/install) installed.
 
 ```bash
 # Clone the repository
@@ -69,42 +69,14 @@ flutter run -d android
 
 # Run on iOS (macOS only)
 flutter run -d ios
-
-## 📂 Folder Structure
-
 ```
-lib/
-├── common/ # Reusable blocs and UI widgets
-│ ├── bloc/
-│ └── widgets/
-│
-├── core/ # Business logic core (Clean Architecture)
-│ ├── configs/ # App configurations
-│ ├── constants/ # Static values, routes, keys
-│ ├── network/ # API services, HTTP clients
-│ └── usecase/ # Application use cases
-│
-├── icons/ # Custom icon sets
-├── images/ # Static assets
-│
-├── presentation/ # UI presentation layer
-│ ├── components/ # Shared UI components
-│ ├── model/ # View-specific models
-│ ├── pages/ # UI pages/screens
-│ ├── service/ # Service wrappers (Firebase, Supabase, etc.)
-│ └── utilities/ # Helpers, extensions
-│
-├── firebase_options.dart # Firebase auto-generated config
-├── route_persistence.dart # Navigation history handling
-├── test.dart # Debug or test entry point
-└── main.dart # App entry point
----
 
-## 📄 License
+
+## License
 
 This project is developed for academic and research purposes only.
 Not licensed for commercial use.
 
-## 📄 Link demo:
+## 🎥 Link demo:
 https://drive.google.com/file/u/1/d/1_DgnfJ7LtNTMWoYQo1kBwSuGGEhqhimP/view
 
